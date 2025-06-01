@@ -1,0 +1,179 @@
+version: '3'
+
+# Enable .env file loading
+dotenv: ['.env']
+
+vars:
+  VERSION: "0.1.0"
+  BIN_NAME: "lnb"
+
+tasks:
+  clean:
+    cmds:
+      - rm -rf dist
+      - mkdir -p dist
+
+  build:
+    cmds:
+      - task: clean
+      - task: build:linux
+      - task: build:darwin
+      - task: build:windows
+      - task: zip
+
+  build:linux:
+    cmds:
+      - go build -o dist/{{.BIN_NAME}}-linux-amd64 ./cmd/lnb
+      - go build -o dist/{{.BIN_NAME}}-linux-arm64 ./cmd/lnb
+
+  build:darwin:
+    cmds:
+      - GOOS=darwin GOARCH=amd64 go build -o dist/{{.BIN_NAME}}-darwin-amd64 ./cmd/lnb
+      - GOOS=darwin GOARCH=arm64 go build -o dist/{{.BIN_NAME}}-darwin-arm64 ./cmd/lnb
+
+  build:windows:
+    cmds:
+      - GOOS=windows GOARCH=amd64 go build -o dist/{{.BIN_NAME}}-windows-amd64.exe ./cmd/lnb
+
+  zip:
+    cmds:
+      - cd dist && zip {{.BIN_NAME}}-linux-amd64.zip {{.BIN_NAME}}-linux-amd64
+      - cd dist && zip {{.BIN_NAME}}-linux-arm64.zip {{.BIN_NAME}}-linux-arm64
+      - cd dist && zip {{.BIN_NAME}}-darwin-amd64.zip {{.BIN_NAME}}-darwin-amd64
+      - cd dist && zip {{.BIN_NAME}}-darwin-arm64.zip {{.BIN_NAME}}-darwin-arm64
+      - cd dist && zip {{.BIN_NAME}}-windows-amd64.zip {{.BIN_NAME}}-windows-amd64.exe
+
+  build:local:
+    cmds:
+      - go build -o dist/{{.BIN_NAME}} ./cmd/lnb
+
+  install:
+    cmds:
+      - task: build:local
+      - ./dist/{{.BIN_NAME}} dist/{{.BIN_NAME}} install
+
+  remove:
+    cmds:
+      - task: build:local
+      - ./dist/{{.BIN_NAME}} dist/{{.BIN_NAME}} remove
+
+  # Package manager tasks
+  pkg:homebrew:
+    desc: Prepare Homebrew package
+    cmds:
+      - task: build:darwin
+      - cp pkg/homebrew/lnb.rb dist/
+
+  pkg:chocolatey:
+    desc: Prepare Chocolatey package
+    cmds:
+      - task: build:windows
+      - cp -r pkg/chocolatey dist/
+      - cd dist && zip -r lnb-choco.zip chocolatey/
+
+  pkg:scoop:
+    desc: Prepare Scoop manifest
+    cmds:
+      - task: build:windows
+      - cp pkg/scoop/lnb.json dist/
+
+  pkg:snap:
+    desc: Build Snap package
+    cmds:
+      - task: build:linux
+      - cp pkg/snap/snapcraft.yaml .
+      - |
+        if [[ "$(uname)" == "Linux" ]]; then
+          snapcraft --destructive-mode
+          mv lnb*.snap dist/
+        else
+          echo "Skipping snap build on non-Linux platform. Snap packages can only be built on Linux."
+          # Create a placeholder file to indicate snap was skipped
+          mkdir -p dist
+          touch dist/snap-build-skipped-on-$(uname)
+        fi
+      - rm snapcraft.yaml
+
+  # Build all packages
+  pkg:all:
+    desc: Build all packages
+    cmds:
+      - task: build
+      - task: pkg:homebrew
+      - task: pkg:chocolatey
+      - task: pkg:scoop
+      - task: pkg:snap
+
+  # Publish tasks for local publishing
+  publish:homebrew:
+    desc: Publish to Homebrew
+    cmds:
+      - echo "Pushing Homebrew formula to tap repository..."
+      - git config --global user.email "$(git config user.email)"
+      - git config --global user.name "$(git config user.name)"
+      - rm -rf homebrew-tap || true
+      - git clone https://${HOMEBREW_GITHUB_TOKEN}@github.com/muthuishere/homebrew-tap.git
+      - cp dist/lnb.rb homebrew-tap/Formula/
+      - cd homebrew-tap && git add Formula/lnb.rb && git commit -m "Release v{{.VERSION}}" && git push
+      - rm -rf homebrew-tap
+
+  publish:chocolatey:
+    desc: Publish to Chocolatey
+    cmds:
+      - echo "Publishing to Chocolatey..."
+      - cd dist/chocolatey && choco pack
+      - choco push dist/chocolatey/lnb.{{.VERSION}}.nupkg --api-key ${CHOCO_API_KEY} --source https://push.chocolatey.org/
+
+  publish:scoop:
+    desc: Publish to Scoop
+    cmds:
+      - echo "Pushing Scoop manifest to bucket..."
+      - git config --global user.email "$(git config user.email)"
+      - git config --global user.name "$(git config user.name)"
+      - rm -rf scoop-bucket || true
+      - git clone https://${SCOOP_GITHUB_TOKEN}@github.com/muthuishere/scoop-bucket.git
+      - cp dist/lnb.json scoop-bucket/bucket/
+      - cd scoop-bucket && git add bucket/lnb.json && git commit -m "Release v{{.VERSION}}" && git push
+      - rm -rf scoop-bucket
+
+  publish:snap:
+    desc: Publish to Snap Store
+    cmds:
+      - echo "Publishing to Snap Store..."
+      - |
+        if [[ "$(uname)" == "Linux" ]]; then
+          echo "${SNAPCRAFT_LOGIN}" | snapcraft login --with -
+          snapcraft register-name lnb --automatic-name --yes || true
+          find dist -name "lnb_*.snap" -exec snapcraft upload {} --release=stable \;
+        else
+          echo "Skipping snap publishing on non-Linux platform. Snap packages can only be published from Linux."
+        fi
+
+  publish:github:
+    desc: Create a GitHub release and upload artifacts
+    cmds:
+      - echo "Creating GitHub release v{{.VERSION}}..."
+      # Create a tag if it doesn't exist
+      - git tag v{{.VERSION}} || true
+      - git push origin v{{.VERSION}} || true
+      # Create the release
+      - |
+        gh release create v{{.VERSION}} \
+          --title "LNB v{{.VERSION}}" \
+          --notes "Release v{{.VERSION}} of LNB - Link Binary utility" \
+          dist/*.zip \
+          dist/*.rb \
+          dist/*.json \
+          --repo muthuishere/lnb
+      - echo "GitHub release created successfully!"
+
+  publish:all:
+    desc: Publish all packages to their respective repositories
+    cmds:
+      - task: pkg:all
+      - task: publish:github
+      - task: publish:homebrew
+      - task: publish:chocolatey
+      - task: publish:scoop
+      
+
