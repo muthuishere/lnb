@@ -21,6 +21,10 @@ parts:
     source: dist/
     stage:
       - lnb-linux-amd64
+    override-build: |
+      craftctl default
+      install -D $SNAPCRAFT_PART_INSTALL/lnb-linux-amd64 $SNAPCRAFT_PART_INSTALL/usr/bin/lnb
+      chmod +x $SNAPCRAFT_PART_INSTALL/usr/bin/lnb
 
 apps:
   lnb:

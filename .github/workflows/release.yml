@@ -58,7 +58,7 @@ jobs:
           echo "Pushing Scoop manifest to bucket..."
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git config --global user.name "github-actions[bot]"
-          git clone https://x-access-token:${SCOOP_GITHUB_TOKEN}@github.com/muthuishere/scoop-bucket-lnb.git
+          git clone https://x-access-token:${SCOOP_GITHUB_TOKEN}@github.com/muthuishere/scoop-bucket.git
           cp dist/lnb.json scoop-bucket/bucket/
           cd scoop-bucket && git add bucket/lnb.json && git commit -m "Release v0.1.0" && git push
 

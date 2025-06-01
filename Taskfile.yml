@@ -111,19 +111,33 @@ tasks:
       - echo "Pushing Homebrew formula to tap repository..."
       - git config --global user.email "$(git config user.email)"
       - git config --global user.name "$(git config user.name)"
-      - rm -rf homebrew-tap || true
       - |
-        if ! git clone https://${HOMEBREW_GITHUB_TOKEN}@github.com/muthuishere/homebrew-tap-lnb.git; then
+        # Use mktemp to create a temporary directory
+        TEMP_DIR=$(mktemp -d)
+        cd $TEMP_DIR
+        
+        # Clone the repository
+        if ! git clone https://${HOMEBREW_GITHUB_TOKEN}@github.com/muthuishere/homebrew-tap.git; then
           echo "Repository not found. Please create it first at https://github.com/new"
           echo "Name: homebrew-tap"
-          echo "Description: Homebrew tap for lnb"
+          echo "Description: Homebrew tap for command line utilities"
           echo "Make it public and initialize with a README"
           exit 1
         fi
-      - mkdir -p homebrew-tap/Formula
-      - cp dist/lnb.rb homebrew-tap/Formula/
-      - cd homebrew-tap && git add Formula/lnb.rb && git commit -m "Release v{{.VERSION}}" && git push
-      - rm -rf homebrew-tap
+        
+        # Create Formula directory if it doesn't exist
+        mkdir -p homebrew-tap/Formula
+        
+        # Copy the formula and commit
+        cp $(pwd)/../../dist/lnb.rb homebrew-tap/Formula/
+        cd homebrew-tap
+        git add Formula/lnb.rb
+        git commit -m "Release v{{.VERSION}}"
+        git push
+        
+        # Clean up
+        cd ../..
+        rm -rf $TEMP_DIR
 
   publish:chocolatey:
     desc: Publish to Chocolatey
@@ -138,19 +152,33 @@ tasks:
       - echo "Pushing Scoop manifest to bucket..."
       - git config --global user.email "$(git config user.email)"
       - git config --global user.name "$(git config user.name)"
-      - rm -rf scoop-bucket || true
       - |
-        if ! git clone https://${SCOOP_GITHUB_TOKEN}@github.com/muthuishere/scoop-bucket-lnb.git; then
+        # Use mktemp to create a temporary directory
+        TEMP_DIR=$(mktemp -d)
+        cd $TEMP_DIR
+        
+        # Clone the repository
+        if ! git clone https://${SCOOP_GITHUB_TOKEN}@github.com/muthuishere/scoop-bucket.git; then
           echo "Repository not found. Please create it first at https://github.com/new"
           echo "Name: scoop-bucket"
-          echo "Description: Scoop bucket for lnb"
+          echo "Description: Scoop bucket for command line utilities"
           echo "Make it public and initialize with a README"
           exit 1
         fi
-      - mkdir -p scoop-bucket/bucket
-      - cp dist/lnb.json scoop-bucket/bucket/
-      - cd scoop-bucket && git add bucket/lnb.json && git commit -m "Release v{{.VERSION}}" && git push
-      - rm -rf scoop-bucket
+        
+        # Create bucket directory if it doesn't exist
+        mkdir -p scoop-bucket/bucket
+        
+        # Copy the manifest and commit
+        cp $(pwd)/../../dist/lnb.json scoop-bucket/bucket/
+        cd scoop-bucket
+        git add bucket/lnb.json
+        git commit -m "Release v{{.VERSION}}"
+        git push
+        
+        # Clean up
+        cd ../..
+        rm -rf $TEMP_DIR
 
   publish:snap:
     desc: Publish to Snap Store

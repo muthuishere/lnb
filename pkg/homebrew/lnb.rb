@@ -1,5 +1,5 @@
 class Lnb < Formula
-  desc "A simple cross-platform utility to link binaries to your PATH"
+  desc "A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH"
   homepage "https://github.com/muthuishere/lnb"
   version "0.1.0"
 

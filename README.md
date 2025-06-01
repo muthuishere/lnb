@@ -1,106 +1,181 @@
-# LNB - Link Binary
+````markdown
+# LNB – Link Binary
 
-A simple cross-platform utility to link binaries to your PATH.
+## The Problem
 
-## Overview
+Have you ever spent too much time tweaking your PATH, creating symlinks, or writing wrapper scripts just so your custom CLI or downloaded binary works from anywhere? Yeah, it sucks. You shouldn’t have to jump through hoops every time you build or grab a new tool.
 
-LNB makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH. It works across Linux, macOS, and Windows with a consistent interface.
+**Why this matters**: Pointless setup steps slow you down. You want to focus on coding or using the tool, not messing with config files.
+
+## The Solution
+
+**LNB** fixes that by giving you a one-liner to make any binary globally accessible. On Linux/macOS, it just makes a symlink in your PATH. On Windows, it drops in a tiny wrapper script. No extra config, no guessing which folder to use—LNB handles it.
+
+**Why I like it**: It’s dead simple. You don’t need to learn some complex packaging system or remember different commands per OS.
 
 ## Features
 
-- **Cross-platform**: Works on Linux, macOS, and Windows
-- **Simple interface**: Just two commands - install and remove
-- **No configuration needed**: Automatically detects your OS and does the right thing
+- **Cross-platform**: Same command on Linux, macOS, and Windows.  
+- **Minimal interface**: Only two actions—`install` (default) and `remove`.  
+- **Zero config**: LNB auto-detects your OS and does the right thing.  
+- **Fast**: No dependencies beyond the Go binary itself.
 
 ## Installation
 
 ### From Package Managers
 
-#### Homebrew (macOS/Linux)
-```bash
-brew install muthuishere/tap/lnb
-```
+I recommend using a package manager if you can—setup is instant.
 
-#### Chocolatey (Windows)
-```powershell
-choco install lnb
-```
+- **Homebrew (macOS/Linux)**  
+  ```bash
+  brew tap muthuishere/homebrew-tap
+  brew install lnb
+````
 
-#### Scoop (Windows)
-```powershell
-scoop bucket add muthuishere https://github.com/muthuishere/scoop-bucket-lnb.git
-scoop install lnb
-```
+*Why Homebrew?* Everyone on macOS/Linux already has it, and updates are a breeze.
 
-#### Snap (Linux)
-```bash
-snap install lnb
-```
+* **Chocolatey (Windows)**
+
+  ```powershell
+  choco install lnb
+  ```
+
+  *Why Chocolatey?* It’s the de facto on Windows—no extra hassle.
+
+* **Scoop (Windows)**
+
+  ```powershell
+  scoop bucket add muthuishere https://github.com/muthuishere/scoop-bucket.git
+  scoop install lnb
+  ```
+
+  *Why Scoop?* If you’re already using Scoop, it feels right to keep things consistent.
+
+
 
 ### Manual Installation
 
-1. Download the binary for your platform from the [releases page](https://github.com/muthuishere/lnb/releases)
-2. Use LNB to install itself:
-```bash
-./lnb-[platform] ./lnb-[platform] install
-```
+If you prefer to download directly:
+
+1. Grab the latest binary from the [releases page](https://github.com/muthuishere/lnb/releases).
+2. Run LNB to install itself globally:
+
+   ```bash
+   ./lnb-[platform] ./lnb-[platform] install
+   ```
+
+   This makes `lnb` available system-wide so you can use LNB to manage other tools.
 
 ## Usage
 
-### Installing a binary
+### Install a Binary
+
 ```bash
+# Default action is "install"
+lnb path/to/binary
+# or explicitly:
 lnb path/to/binary install
 ```
 
-This will make `binary` available in your PATH. On Linux and macOS, it creates a symbolic link in `/usr/local/bin`. On Windows, it creates a wrapper script in `%USERPROFILE%\bin`.
+* On **Linux/macOS**, this creates:
 
-### Removing a binary
+  ```
+  /usr/local/bin/<binary> -> /absolute/path/to/binary
+  ```
+* On **Windows**, this creates:
+
+  ```
+  %USERPROFILE%\bin\<binary>.cmd
+  ```
+
+  which wraps your `.exe` or any executable. *(Make sure `%USERPROFILE%\bin` is in your PATH.)*
+
+**Why it’s neat**: You don’t have to think about where “bin” directories live on each OS—LNB does it.
+
+### Remove a Binary
+
 ```bash
 lnb path/to/binary remove
 ```
 
-This will remove the binary from your PATH.
+* Deletes the symlink (or `.cmd` wrapper on Windows), but leaves your original file untouched.
 
 ## Examples
 
-### Make a development tool available system-wide
-```bash
-lnb ~/tools/awesome-cli install
-# Now you can use awesome-cli from anywhere
-```
+* **Make a dev tool available everywhere**
 
-### Remove a tool when you no longer need it
-```bash
-lnb ~/tools/awesome-cli remove
-```
+  ```bash
+  cd ~/projects/mytool
+  lnb mytool         # now "mytool" runs anywhere
+  ```
 
-## How it works
+  *Opinion*: I love not having to copy binaries around. One command and it “just works.”
 
-- **Linux/macOS**: Creates symbolic links in `/usr/local/bin`
-- **Windows**: Creates `.cmd` wrapper scripts in `%USERPROFILE%\bin`
+* **Uninstall when you’re done**
 
-## Building from source
+  ```bash
+  lnb ~/projects/mytool remove
+  ```
 
-Requirements:
-- Go 1.16+
-- [Task](https://taskfile.dev) (optional, for running tasks)
+  *Opinion*: Removing is just as easy—no more hunting for old symlinks.
 
-```bash
-# Clone the repository
-git clone https://github.com/muthuishere/lnb.git
-cd lnb
+## How It Works
 
-# Build for your platform
-task build:local
+* **Linux/macOS (`linux.go` & `mac.go`)**
+  Uses `os.Symlink()` to create `/usr/local/bin/<name>`. That’s it.
+  *Why it’s simple*: Symlinks are built-in, reliable, and everyone’s used to binaries living in `/usr/local/bin`.
 
-# Or build for all platforms
-task build
-```
+* **Windows (`windows.go`)**
 
-## Contributing
+  1. Ensures `~/bin/` exists.
+  2. Writes a tiny `.cmd` wrapper that does:
 
-Contributions are welcome! Feel free to open issues or submit pull requests.
+     ```bat
+     @echo off
+     "C:\full\path\to\<binary>.exe" %*
+     ```
+  3. Reminds you to add `~/bin` to your PATH if it isn’t already.
+     *Why a wrapper?* Windows doesn’t handle symlinks to arbitrary files as gracefully—this is more consistent.
+
+## Building from Source
+
+**Requirements**:
+
+* Go 1.16+
+* [Task](https://taskfile.dev) (optional, for automation)
+
+1. Clone the repo:
+
+   ```bash
+   git clone https://github.com/muthuishere/lnb.git
+   cd lnb
+   ```
+
+2. Build for your current platform:
+
+   ```bash
+   task build:local
+   ```
+
+   Or build everything:
+
+   ```bash
+   task build
+   ```
+
+   *Opinion*: Using `task` means no manual `GOOS/GOARCH` juggling. I like saving keystrokes.
+
+3. Move the binary into your PATH:
+
+   ```bash
+   sudo mv lnb /usr/local/bin/
+   chmod +x /usr/local/bin/lnb
+   ```
+
+   *(Windows users drop `lnb.exe` into `%USERPROFILE%\bin`.)*
+
 
 ## License
 
 MIT
+
