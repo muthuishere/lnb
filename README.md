@@ -28,7 +28,7 @@ choco install lnb
 
 #### Scoop (Windows)
 ```powershell
-scoop bucket add muthuishere https://github.com/muthuishere/scoop-bucket.git
+scoop bucket add muthuishere https://github.com/muthuishere/scoop-bucket-lnb.git
 scoop install lnb
 ```
 

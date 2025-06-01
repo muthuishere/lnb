@@ -112,7 +112,15 @@ tasks:
       - git config --global user.email "$(git config user.email)"
       - git config --global user.name "$(git config user.name)"
       - rm -rf homebrew-tap || true
-      - git clone https://${HOMEBREW_GITHUB_TOKEN}@github.com/muthuishere/homebrew-tap.git
+      - |
+        if ! git clone https://${HOMEBREW_GITHUB_TOKEN}@github.com/muthuishere/homebrew-tap-lnb.git; then
+          echo "Repository not found. Please create it first at https://github.com/new"
+          echo "Name: homebrew-tap"
+          echo "Description: Homebrew tap for lnb"
+          echo "Make it public and initialize with a README"
+          exit 1
+        fi
+      - mkdir -p homebrew-tap/Formula
       - cp dist/lnb.rb homebrew-tap/Formula/
       - cd homebrew-tap && git add Formula/lnb.rb && git commit -m "Release v{{.VERSION}}" && git push
       - rm -rf homebrew-tap
@@ -131,7 +139,15 @@ tasks:
       - git config --global user.email "$(git config user.email)"
       - git config --global user.name "$(git config user.name)"
       - rm -rf scoop-bucket || true
-      - git clone https://${SCOOP_GITHUB_TOKEN}@github.com/muthuishere/scoop-bucket.git
+      - |
+        if ! git clone https://${SCOOP_GITHUB_TOKEN}@github.com/muthuishere/scoop-bucket-lnb.git; then
+          echo "Repository not found. Please create it first at https://github.com/new"
+          echo "Name: scoop-bucket"
+          echo "Description: Scoop bucket for lnb"
+          echo "Make it public and initialize with a README"
+          exit 1
+        fi
+      - mkdir -p scoop-bucket/bucket
       - cp dist/lnb.json scoop-bucket/bucket/
       - cd scoop-bucket && git add bucket/lnb.json && git commit -m "Release v{{.VERSION}}" && git push
       - rm -rf scoop-bucket
@@ -175,5 +191,15 @@ tasks:
       - task: publish:homebrew
       - task: publish:chocolatey
       - task: publish:scoop
-      
+      - task: publish:snap
+
+  publish:github-only:
+    desc: Only publish to GitHub Releases (useful for macOS users)
+    cmds:
+      - task: build
+      - task: pkg:homebrew
+      - task: pkg:chocolatey
+      - task: pkg:scoop
+      - task: publish:github
+
 
