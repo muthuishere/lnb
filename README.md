@@ -1,24 +1,25 @@
-(Draft , not working  till now)
 # LNB – Link Binary
 
 ## The Problem
 
-Have you ever spent too much time tweaking your PATH, creating symlinks, or writing wrapper scripts just so your custom CLI or downloaded binary works from anywhere? Yeah, it sucks. You shouldn’t have to jump through hoops every time you build or grab a new tool.
+Have you ever spent too much time tweaking your PATH, creating symlinks, or writing wrapper scripts just so your custom CLI or downloaded binary works from anywhere? Yeah, it sucks. You shouldn't have to jump through hoops every time you build or grab a new tool.
 
 **Why this matters**: Pointless setup steps slow you down. You want to focus on coding or using the tool, not messing with config files.
 
 ## The Solution
 
-**LNB** fixes that by giving you a one-liner to make any binary globally accessible. On Linux/macOS, it just makes a symlink in your PATH. On Windows, it drops in a tiny wrapper script. No extra config, no guessing which folder to use—LNB handles it.
+**LNB** fixes that by giving you a one-liner to make any binary globally accessible. On Linux/macOS, it creates symlinks in `/usr/local/bin`. On Windows, it creates wrapper scripts in `%USERPROFILE%\bin`. Plus, it can create command aliases for complex commands. No extra config, no guessing which folder to use—LNB handles it all and tracks what you've installed.
 
-**Why I like it**: It’s dead simple. You don’t need to learn some complex packaging system or remember different commands per OS.
+**Why I like it**: It's dead simple. You don't need to learn some complex packaging system or remember different commands per OS.
 
 ## Features
 
-- **Cross-platform**: Same command on Linux, macOS, and Windows.  
-- **Minimal interface**: Only two actions—`install` (default) and `remove`.  
-- **Zero config**: LNB auto-detects your OS and does the right thing.  
-- **Fast**: No dependencies beyond the Go binary itself.
+- **Cross-platform**: Same command on Linux, macOS, and Windows  
+- **Binary installation**: Install any executable to your PATH with one command
+- **Command aliases**: Create shortcuts for complex commands (e.g., `java -jar myapp.jar`)
+- **Installation tracking**: Keep track of what you've installed with `lnb list`
+- **Zero config**: LNB auto-detects your OS and does the right thing  
+- **Fast**: No dependencies beyond the Go binary itself
 
 ## Installation
 
@@ -30,28 +31,26 @@ I recommend using a package manager if you can—setup is instant.
   ```bash
   brew tap muthuishere/homebrew-tap
   brew install lnb
-````
+  ```
 
-*Why Homebrew?* Everyone on macOS/Linux already has it, and updates are a breeze.
+  *Why Homebrew?* Everyone on macOS/Linux already has it, and updates are a breeze.
 
-* **Chocolatey (Windows)**
+- **Chocolatey (Windows)**
 
   ```powershell
   choco install lnb
   ```
 
-  *Why Chocolatey?* It’s the de facto on Windows—no extra hassle.
+  *Why Chocolatey?* It's the de facto on Windows—no extra hassle.
 
-* **Scoop (Windows)**
+- **Scoop (Windows)**
 
   ```powershell
   scoop bucket add muthuishere https://github.com/muthuishere/scoop-bucket.git
   scoop install lnb
   ```
 
-  *Why Scoop?* If you’re already using Scoop, it feels right to keep things consistent.
-
-
+  *Why Scoop?* If you're already using Scoop, it feels right to keep things consistent.
 
 ### Manual Installation
 
@@ -77,20 +76,17 @@ lnb path/to/binary
 lnb path/to/binary install
 ```
 
-* On **Linux/macOS**, this creates:
-
+- On **Linux/macOS**, this creates:
   ```
   /usr/local/bin/<binary> -> /absolute/path/to/binary
   ```
-* On **Windows**, this creates:
-
+- On **Windows**, this creates:
   ```
   %USERPROFILE%\bin\<binary>.cmd
   ```
-
   which wraps your `.exe` or any executable. *(Make sure `%USERPROFILE%\bin` is in your PATH.)*
 
-**Why it’s neat**: You don’t have to think about where “bin” directories live on each OS—LNB does it.
+**Why it's neat**: You don't have to think about where "bin" directories live on each OS—LNB does it.
 
 ### Remove a Binary
 
@@ -98,84 +94,140 @@ lnb path/to/binary install
 lnb path/to/binary remove
 ```
 
-* Deletes the symlink (or `.cmd` wrapper on Windows), but leaves your original file untouched.
+Deletes the symlink (or `.cmd` wrapper on Windows), but leaves your original file untouched.
+
+### Create Command Aliases
+
+```bash
+# Create an alias for a complex command
+lnb alias myapp "java -jar ./myapp.jar"
+lnb alias serve "python -m http.server 8080"
+lnb alias deploy "docker run --rm -v $(pwd):/workspace deploy-tool"
+```
+
+- **Linux/macOS**: Creates a shell script at `/usr/local/bin/<alias-name>`
+- **Windows**: Creates a batch file at `%USERPROFILE%\bin\<alias-name>.bat`
+
+### Remove Aliases
+
+```bash
+lnb unalias myapp
+```
+
+### List Installed Items
+
+```bash
+lnb list
+```
+
+Shows all binaries and aliases installed by LNB, including:
+- Installation date
+- Source path (for binaries) or command (for aliases)
+- Target location
 
 ## Examples
 
-* **Make a dev tool available everywhere**
+- **Make a dev tool available everywhere**
 
   ```bash
   cd ~/projects/mytool
   lnb mytool         # now "mytool" runs anywhere
   ```
 
-  *Opinion*: I love not having to copy binaries around. One command and it “just works.”
+  *Opinion*: I love not having to copy binaries around. One command and it "just works."
 
-* **Uninstall when you’re done**
+- **Create an alias for a Java application**
+
+  ```bash
+  lnb alias myapp "java -jar ./target/myapp.jar"
+  # Now you can run "myapp" from anywhere
+  ```
+
+- **Uninstall when you're done**
 
   ```bash
   lnb ~/projects/mytool remove
+  lnb unalias myapp
   ```
 
   *Opinion*: Removing is just as easy—no more hunting for old symlinks.
 
 ## How It Works
 
-* **Linux/macOS (`linux.go` & `mac.go`)**
-  Uses `os.Symlink()` to create `/usr/local/bin/<name>`. That’s it.
-  *Why it’s simple*: Symlinks are built-in, reliable, and everyone’s used to binaries living in `/usr/local/bin`.
+### Binary Installation
 
-* **Windows (`windows.go`)**
+- **Linux/macOS**  
+  Uses `os.Symlink()` to create `/usr/local/bin/<name>` pointing to your binary.  
+  *Why it's simple*: Symlinks are built-in, reliable, and everyone's used to binaries living in `/usr/local/bin`.
 
-  1. Ensures `~/bin/` exists.
-  2. Writes a tiny `.cmd` wrapper that does:
-
+- **Windows**  
+  1. Ensures `%USERPROFILE%\bin\` exists
+  2. Creates a `.cmd` wrapper:
      ```bat
      @echo off
-     "C:\full\path\to\<binary>.exe" %*
+     "C:\full\path\to\binary.exe" %*
      ```
-  3. Reminds you to add `~/bin` to your PATH if it isn’t already.
-     *Why a wrapper?* Windows doesn’t handle symlinks to arbitrary files as gracefully—this is more consistent.
+  3. Reminds you to add `%USERPROFILE%\bin` to your PATH if needed
+
+  *Why a wrapper?* Windows doesn't handle symlinks to arbitrary files as gracefully—this is more consistent.
+
+### Command Aliases
+
+- **Linux/macOS**  
+  Creates executable shell scripts that run your command with arguments passed through.
+
+- **Windows**  
+  Creates `.bat` files that execute your command with arguments.
+
+### Configuration Tracking
+
+LNB maintains a configuration file at `~/.lnb/config.json` that tracks:
+- What you've installed (binaries and aliases)
+- Source paths and target locations
+- Installation timestamps
+
+This enables the `lnb list` command and helps prevent conflicts.
 
 ## Building from Source
 
 **Requirements**:
-
-* Go 1.16+
-* [Task](https://taskfile.dev) (optional, for automation)
+- Go 1.23+
+- [Task](https://taskfile.dev) (optional, for automation)
 
 1. Clone the repo:
-
    ```bash
    git clone https://github.com/muthuishere/lnb.git
    cd lnb
    ```
 
 2. Build for your current platform:
-
-   ```bash
-   task build:local
-   ```
-
-   Or build everything:
-
    ```bash
    task build
    ```
 
-   *Opinion*: Using `task` means no manual `GOOS/GOARCH` juggling. I like saving keystrokes.
-
-3. Move the binary into your PATH:
-
+   Or build for all platforms:
    ```bash
-   sudo mv lnb /usr/local/bin/
-   chmod +x /usr/local/bin/lnb
+   task build:all
    ```
 
-   *(Windows users drop `lnb.exe` into `%USERPROFILE%\bin`.)*
+3. Install the built binary:
+   ```bash
+   task install
+   ```
 
+## Command Reference
+
+```bash
+lnb <file>                          # Install binary (default action)
+lnb <file> install                  # Install binary explicitly  
+lnb <file> remove                   # Remove binary
+lnb alias <name> <command>          # Create command alias
+lnb unalias <name>                  # Remove alias
+lnb list                            # List all installed items
+lnb help                            # Show help
+lnb version                         # Show version information
+```
 
 ## License
 
 MIT
-
