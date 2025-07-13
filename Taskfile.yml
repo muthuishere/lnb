@@ -1,233 +1,115 @@
+# GoReleaser-based Taskfile
 version: '3'
 
 # Enable .env file loading
 dotenv: ['.env']
 
 vars:
-  VERSION: "0.1.0"
-  BIN_NAME: "lnb"
+  # Use APP_NAME from .env as BIN_NAME for backward compatibility
+  BIN_NAME: "{{.APP_NAME}}"
 
 tasks:
   clean:
+    desc: Clean build artifacts
     cmds:
       - rm -rf dist
       - mkdir -p dist
 
   build:
-    cmds:
-      - task: clean
-      - task: build:linux
-      - task: build:darwin
-      - task: build:windows
-      - task: zip
-
-  build:linux:
-    cmds:
-      - go build -o dist/{{.BIN_NAME}}-linux-amd64 ./cmd/lnb
-      - go build -o dist/{{.BIN_NAME}}-linux-arm64 ./cmd/lnb
-
-  build:darwin:
-    cmds:
-      - GOOS=darwin GOARCH=amd64 go build -o dist/{{.BIN_NAME}}-darwin-amd64 ./cmd/lnb
-      - GOOS=darwin GOARCH=arm64 go build -o dist/{{.BIN_NAME}}-darwin-arm64 ./cmd/lnb
-
-  build:windows:
-    cmds:
-      - GOOS=windows GOARCH=amd64 go build -o dist/{{.BIN_NAME}}-windows-amd64.exe ./cmd/lnb
-
-  zip:
-    cmds:
-      - cd dist && zip {{.BIN_NAME}}-linux-amd64.zip {{.BIN_NAME}}-linux-amd64
-      - cd dist && zip {{.BIN_NAME}}-linux-arm64.zip {{.BIN_NAME}}-linux-arm64
-      - cd dist && zip {{.BIN_NAME}}-darwin-amd64.zip {{.BIN_NAME}}-darwin-amd64
-      - cd dist && zip {{.BIN_NAME}}-darwin-arm64.zip {{.BIN_NAME}}-darwin-arm64
-      - cd dist && zip {{.BIN_NAME}}-windows-amd64.zip {{.BIN_NAME}}-windows-amd64.exe
-
-  build:local:
+    desc: Build for current platform
     cmds:
       - go build -o dist/{{.BIN_NAME}} ./cmd/lnb
 
-  install:
+  build:all:
+    desc: Build for all platforms using GoReleaser
     cmds:
-      - task: build:local
-      - ./dist/{{.BIN_NAME}} dist/{{.BIN_NAME}} install
+      - goreleaser build --clean --snapshot
+
+  test:build:
+    desc: Build test binary for integration tests
+    cmds:
+      - go build -o dist/test-{{.BIN_NAME}} ./cmd/lnb
+
+  test:integration:
+    desc: Run integration tests using Go unit tests
+    deps: [test:build]
+    cmds:
+      - cd cmd/lnb && go test -v -run TestLnbIntegration
+
+  test:unit:
+    desc: Run only the main_test.go unit tests
+    deps: [test:build]
+    cmds:
+      - cd cmd/lnb && go test -v -run TestLnb
+
+  test:all:
+    desc: Run all tests (unit and integration)
+    cmds:
+      - task: test:unit
+      - task: test:integration
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./...
+
+  install:
+    desc: Install LNB locally
+    cmds:
+      - task: build
+      - ./dist/{{.BIN_NAME}} ./dist/{{.BIN_NAME}} install
 
   remove:
-    cmds:
-      - task: build:local
-      - ./dist/{{.BIN_NAME}} dist/{{.BIN_NAME}} remove
-
-  # Package manager tasks
-  pkg:homebrew:
-    desc: Prepare Homebrew package
-    cmds:
-      - task: build:darwin
-      - cp pkg/homebrew/lnb.rb dist/
-
-  pkg:chocolatey:
-    desc: Prepare Chocolatey package
-    cmds:
-      - task: build:windows
-      - cp -r pkg/chocolatey dist/
-      - cd dist && zip -r lnb-choco.zip chocolatey/
-
-  pkg:scoop:
-    desc: Prepare Scoop manifest
-    cmds:
-      - task: build:windows
-      - cp pkg/scoop/lnb.json dist/
-
-  pkg:snap:
-    desc: Build Snap package
-    cmds:
-      - task: build:linux
-      - cp pkg/snap/snapcraft.yaml .
-      - |
-        if [[ "$(uname)" == "Linux" ]]; then
-          snapcraft --destructive-mode
-          mv lnb*.snap dist/
-        else
-          echo "Skipping snap build on non-Linux platform. Snap packages can only be built on Linux."
-          # Create a placeholder file to indicate snap was skipped
-          mkdir -p dist
-          touch dist/snap-build-skipped-on-$(uname)
-        fi
-      - rm snapcraft.yaml
-
-  # Build all packages
-  pkg:all:
-    desc: Build all packages
+    desc: Remove LNB from local system
     cmds:
       - task: build
-      - task: pkg:homebrew
-      - task: pkg:chocolatey
-      - task: pkg:scoop
-      - task: pkg:snap
+      - ./dist/{{.BIN_NAME}} ./dist/{{.BIN_NAME}} remove
 
-  # Publish tasks for local publishing
-  publish:homebrew:
-    desc: Publish to Homebrew
+  # GoReleaser commands
+  check:
+    desc: Check GoReleaser configuration
     cmds:
-      - echo "Pushing Homebrew formula to tap repository..."
-      - git config --global user.email "$(git config user.email)"
-      - git config --global user.name "$(git config user.name)"
-      - |
-        # Use mktemp to create a temporary directory
-        TEMP_DIR=$(mktemp -d)
-        cd $TEMP_DIR
-        
-        # Clone the repository
-        if ! git clone https://${HOMEBREW_GITHUB_TOKEN}@github.com/muthuishere/homebrew-tap.git; then
-          echo "Repository not found. Please create it first at https://github.com/new"
-          echo "Name: homebrew-tap"
-          echo "Description: Homebrew tap for command line utilities"
-          echo "Make it public and initialize with a README"
-          exit 1
-        fi
-        
-        # Create Formula directory if it doesn't exist
-        mkdir -p homebrew-tap/Formula
-        
-        # Copy the formula and commit
-        cp $(pwd)/../../dist/lnb.rb homebrew-tap/Formula/
-        cd homebrew-tap
-        git add Formula/lnb.rb
-        git commit -m "Release v{{.VERSION}}"
-        git push
-        
-        # Clean up
-        cd ../..
-        rm -rf $TEMP_DIR
+      - goreleaser check
 
-  publish:chocolatey:
-    desc: Publish to Chocolatey
+  update-formula:
+    desc: Update Homebrew formula with current version from .env
     cmds:
-      - echo "Publishing to Chocolatey..."
-      - cd dist/chocolatey && choco pack
-      - choco push dist/chocolatey/lnb.{{.VERSION}}.nupkg --api-key ${CHOCO_API_KEY} --source https://push.chocolatey.org/
+      - go run ./scripts/formulaupdate/main.go 
+        -version="{{.APP_VERSION}}" 
+        -description="{{.APP_DESCRIPTION}}" 
+        -homepage="https://github.com/{{.APP_AUTHOR}}/{{.APP_NAME}}" 
+        -license="MIT" 
+        -formula-path="../homebrew-tap/Formula/{{.APP_NAME}}.rb"
 
-  publish:scoop:
-    desc: Publish to Scoop
+  release:
+    desc: Create a release (requires git tag)
     cmds:
-      - echo "Pushing Scoop manifest to bucket..."
-      - git config --global user.email "$(git config user.email)"
-      - git config --global user.name "$(git config user.name)"
-      - |
-        # Use mktemp to create a temporary directory
-        TEMP_DIR=$(mktemp -d)
-        cd $TEMP_DIR
-        
-        # Clone the repository
-        if ! git clone https://${SCOOP_GITHUB_TOKEN}@github.com/muthuishere/scoop-bucket.git; then
-          echo "Repository not found. Please create it first at https://github.com/new"
-          echo "Name: scoop-bucket"
-          echo "Description: Scoop bucket for command line utilities"
-          echo "Make it public and initialize with a README"
-          exit 1
-        fi
-        
-        # Create bucket directory if it doesn't exist
-        mkdir -p scoop-bucket/bucket
-        
-        # Copy the manifest and commit
-        cp $(pwd)/../../dist/lnb.json scoop-bucket/bucket/
-        cd scoop-bucket
-        git add bucket/lnb.json
-        git commit -m "Release v{{.VERSION}}"
-        git push
-        
-        # Clean up
-        cd ../..
-        rm -rf $TEMP_DIR
+      - goreleaser release --clean
 
-  publish:snap:
-    desc: Publish to Snap Store
+  release:dry:
+    desc: Dry run release (no actual publishing)
     cmds:
-      - echo "Publishing to Snap Store..."
-      - |
-        if [[ "$(uname)" == "Linux" ]]; then
-          echo "${SNAPCRAFT_LOGIN}" | snapcraft login --with -
-          snapcraft register-name lnb --automatic-name --yes || true
-          find dist -name "lnb_*.snap" -exec snapcraft upload {} --release=stable \;
-        else
-          echo "Skipping snap publishing on non-Linux platform. Snap packages can only be published from Linux."
-        fi
+      - goreleaser release --clean --skip=publish
 
-  publish:github:
-    desc: Create a GitHub release and upload artifacts
+  release:snapshot:
+    desc: Create a snapshot release (no tagging required)
     cmds:
-      - echo "Creating GitHub release v{{.VERSION}}..."
-      # Create a tag if it doesn't exist
-      - git tag v{{.VERSION}} || true
-      - git push origin v{{.VERSION}} || true
-      # Create the release
-      - |
-        gh release create v{{.VERSION}} \
-          --title "LNB v{{.VERSION}}" \
-          --notes "Release v{{.VERSION}} of LNB - Link Binary utility" \
-          dist/*.zip \
-          dist/*.rb \
-          dist/*.json \
-          --repo muthuishere/lnb
-      - echo "GitHub release created successfully!"
+      - goreleaser release --clean --snapshot
+
+  # Legacy tasks (kept for compatibility)
+  pkg:all:
+    desc: Build all packages (legacy - use build:all instead)
+    cmds:
+      - task: build:all
 
   publish:all:
-    desc: Publish all packages to their respective repositories
+    desc: Publish all packages (legacy - use release instead)
     cmds:
-      - task: pkg:all
-      - task: publish:github
-      - task: publish:homebrew
-      - task: publish:chocolatey
-      - task: publish:scoop
-      - task: publish:snap
+      - task: release
 
   publish:github-only:
-    desc: Only publish to GitHub Releases (useful for macOS users)
+    desc: Create GitHub release only
     cmds:
-      - task: build
-      - task: pkg:homebrew
-      - task: pkg:chocolatey
-      - task: pkg:scoop
-      - task: publish:github
+      - goreleaser release --clean --skip=brew,scoop,chocolatey,snap
 
 

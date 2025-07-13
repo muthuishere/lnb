@@ -1,0 +1,144 @@
+# GoReleaser configuration for LNB
+version: 2
+
+project_name: lnb
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: lnb
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/lnb
+    binary: lnb
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    # Ignore combinations that don't make sense or aren't supported
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+    flags:
+      - -trimpath
+
+archives:
+  - id: default
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    files:
+      - README.md
+      - LICENSE*
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: 'Bug fixes'
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: Others
+      order: 999
+
+# GitHub Releases
+release:
+  github:
+    owner: muthuishere
+    name: lnb
+  draft: false
+  prerelease: auto
+  name_template: "LNB v{{ .Version }}"
+  header: |
+    ## LNB v{{ .Version }}
+    
+    A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH.
+
+# Homebrew Tap
+brews:
+  - name: lnb
+    description: "A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH"
+    homepage: "https://github.com/muthuishere/lnb"
+    license: "MIT"
+    repository:
+      owner: muthuishere
+      name: homebrew-tap
+      branch: main
+      token: "{{ .Env.HOMEBREW_GITHUB_TOKEN }}"
+    directory: Formula
+    commit_author:
+      name: goreleaserbot
+      email: goreleaser@carlosbecker.com
+    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
+    install: |
+      bin.install "lnb"
+    test: |
+      system "#{bin}/lnb", "--version"
+
+# Scoop Bucket
+scoops:
+  - name: lnb
+    description: "A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH"
+    homepage: "https://github.com/muthuishere/lnb"
+    license: "MIT"
+    repository:
+      owner: muthuishere
+      name: scoop-bucket
+      branch: main
+      token: "{{ .Env.SCOOP_GITHUB_TOKEN }}"
+    directory: bucket
+    commit_author:
+      name: goreleaserbot
+      email: goreleaser@carlosbecker.com
+    commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
+
+# Chocolatey (requires manual setup, but GoReleaser can prepare the package)
+chocolateys:
+  - name: lnb
+    title: LNB
+    authors: muthuishere
+    project_url: https://github.com/muthuishere/lnb
+    tags: "lnb cli utility cross-platform"
+    summary: "Link Binary - A cross-platform utility to link binaries to your PATH"
+    description: |
+      LNB makes command-line tools accessible from anywhere by creating symbolic links 
+      or wrapper scripts in your system's PATH. It works across Linux, macOS, and Windows 
+      with a consistent interface.
+      
+      Features:
+      - Cross-platform: Works on Linux, macOS, and Windows
+      - Simple interface: Just two commands - install and remove
+      - No configuration needed: Automatically detects your OS and does the right thing
+    release_notes: "https://github.com/muthuishere/lnb/releases/tag/v{{ .Version }}"
+    api_key: "{{ .Env.CHOCO_API_KEY }}"
+    source_repo: "https://push.chocolatey.org/"
+    skip_publish: false
