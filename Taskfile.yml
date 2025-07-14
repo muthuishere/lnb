@@ -166,7 +166,7 @@ tasks:
         echo "📦 Current Version: {{.RELEASE_VERSION}}"
         echo
         echo "🔄 Version Management (100% Automatic):"
-        echo "   📦 NPM: GoReleaser generates package.json with {{.Version}} during release"
+        echo "   📦 NPM: goreleaser-npm-publisher generates platform-specific packages"
         echo "   🍺 Homebrew: Templates use {{.Version}} placeholder"
         echo "   🥤 Scoop: Templates use {{.Version}} placeholder"
         echo

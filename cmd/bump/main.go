@@ -22,9 +22,8 @@ func main() {
 		fmt.Println()
 		fmt.Println("This command will:")
 		fmt.Println("  1. Update versions.txt")
-		fmt.Println("  2. Generate/update package.json")
-		fmt.Println("  3. Commit changes")
-		fmt.Println("  4. Create git tag (local)")
+		fmt.Println("  2. Commit changes")
+		fmt.Println("  3. Create git tag (local)")
 		fmt.Println()
 		fmt.Println("After bump, choose release method:")
 		fmt.Println("  • task release-via-git   (push to GitHub Actions)")
@@ -106,17 +105,8 @@ func main() {
 	}
 	fmt.Printf("✅ Updated versions.txt to %s\n", newVersion)
 
-	// Step 2: Generate/update package.json
-	fmt.Println("📦 Step 2: Updating package.json...")
-	err = updatePackageJson(newVersion)
-	if err != nil {
-		fmt.Printf("❌ Error updating package.json: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("✅ Updated package.json to %s\n", newVersion)
-
-	// Step 3: Commit changes
-	fmt.Println("💾 Step 3: Committing changes...")
+	// Step 2: Commit changes  
+	fmt.Println("💾 Step 2: Committing changes...")
 	err = commitChanges(newVersion)
 	if err != nil {
 		fmt.Printf("❌ Error committing changes: %v\n", err)
@@ -124,8 +114,8 @@ func main() {
 	}
 	fmt.Printf("✅ Committed version bump to %s\n", newVersion)
 
-	// Step 4: Create git tag
-	fmt.Println("🏷️  Step 4: Creating git tag...")
+	// Step 3: Create git tag
+	fmt.Println("🏷️  Step 3: Creating git tag...")
 	tagName := "v" + newVersion
 	err = createGitTag(tagName, newVersion)
 	if err != nil {
@@ -144,25 +134,6 @@ func main() {
 	fmt.Println("   • Release locally (faster):          task release-via-local")
 	fmt.Println()
 	fmt.Printf("   Git status: ✅ Ready to push tag %s\n", tagName)
-}
-
-func updatePackageJson(version string) error {
-	// Read the package.json template
-	templateBytes, err := ioutil.ReadFile("cmd/bump/templates/package.json.template")
-	if err != nil {
-		return fmt.Errorf("failed to read package.json template: %w", err)
-	}
-
-	// Replace {{.Version}} with actual version
-	content := strings.ReplaceAll(string(templateBytes), "{{.Version}}", version)
-
-	// Write the updated package.json
-	err = ioutil.WriteFile("package.json", []byte(content), 0644)
-	if err != nil {
-		return fmt.Errorf("failed to write package.json: %w", err)
-	}
-
-	return nil
 }
 
 // isGitClean checks if the git working directory is clean (no uncommitted changes)
@@ -189,8 +160,8 @@ func isGitClean() bool {
 		}
 
 		filename := parts[1]
-		// Allow versions.txt and package.json to be modified during bump
-		if filename != "versions.txt" && filename != "package.json" {
+		// Allow only versions.txt to be modified during bump  
+		if filename != "versions.txt" {
 			fmt.Printf("   Uncommitted changes in: %s\n", filename)
 			return false
 		}
@@ -201,8 +172,8 @@ func isGitClean() bool {
 
 // commitChanges commits the version bump changes to git
 func commitChanges(version string) error {
-	// Add versions.txt and package.json to staging
-	cmd := exec.Command("git", "add", "versions.txt", "package.json")
+	// Add versions.txt to staging
+	cmd := exec.Command("git", "add", "versions.txt")
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to stage files: %w", err)
 	}
