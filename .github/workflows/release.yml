@@ -45,8 +45,6 @@ jobs:
         run: task release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_GITHUB_TOKEN: ${{ secrets.HOMEBREW_GITHUB_TOKEN }}
-          SCOOP_GITHUB_TOKEN: ${{ secrets.SCOOP_GITHUB_TOKEN }}
           CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
           
 
