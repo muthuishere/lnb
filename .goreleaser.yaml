@@ -114,10 +114,10 @@ scoops:
     license: "MIT"
     repository:
       owner: muthuishere
-      name: scoop-bucket
+      name: lnb
       branch: main
-      token: "{{ .Env.SCOOP_GITHUB_TOKEN }}"
-    directory: bucket
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    directory: scoop/bucket
     commit_author:
       name: goreleaserbot
       email: goreleaser@carlosbecker.com

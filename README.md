@@ -49,7 +49,10 @@ I recommend using a package manager if you can—setup is instant.
 - **Scoop (Windows)**
 
   ```powershell
-  scoop bucket add muthuishere https://github.com/muthuishere/scoop-bucket.git
+  # Add this repository as a bucket
+  scoop bucket add lnb https://github.com/muthuishere/lnb
+  
+  # Install LNB
   scoop install lnb
   ```
 
