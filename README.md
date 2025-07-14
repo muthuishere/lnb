@@ -37,8 +37,8 @@ I recommend using a package manager if you can—setup is instant.
 
 - **Homebrew (macOS/Linux)**  
   ```bash
-  # Add this repository as a tap
-  brew tap muthuishere/lnb https://github.com/muthuishere/lnb
+  # Add the tap (separate repository)
+  brew tap muthuishere/lnb https://github.com/muthuishere/homebrew-lnb
   
   # Install LNB
   brew install --cask lnb
@@ -49,8 +49,8 @@ I recommend using a package manager if you can—setup is instant.
 - **Scoop (Windows)**
 
   ```powershell
-  # Add this repository as a bucket
-  scoop bucket add lnb https://github.com/muthuishere/lnb
+  # Add the bucket (separate repository)
+  scoop bucket add lnb https://github.com/muthuishere/scoop-lnb
   
   # Install LNB
   scoop install lnb
@@ -223,19 +223,15 @@ This enables the `lnb list` command and helps prevent conflicts.
 
 ## Package Management
 
-### Homebrew Cask
+### Separate Installer Repositories
 
-The `Casks/` directory contains the Homebrew Cask definition that's automatically generated during releases. This allows users to install LNB directly from this repository:
+Package manager configurations are maintained in separate repositories to avoid merge conflicts during releases:
 
-```bash
-brew tap muthuishere/lnb https://github.com/muthuishere/lnb
-brew install --cask lnb
-```
+- **Homebrew Cask**: https://github.com/muthuishere/homebrew-lnb
+- **Scoop Bucket**: https://github.com/muthuishere/scoop-lnb  
+- **NPM Package**: Published directly to npmjs.org as `lnb-cli`
 
-The cask handles:
-- Binary installation into PATH
-- macOS security (quarantine removal)
-- Clean uninstallation with `brew uninstall --cask lnb`
+These are automatically updated by GoReleaser when new versions are released.
 
 ## Command Reference
 

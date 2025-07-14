@@ -7,8 +7,9 @@ dotenv: ['.env']
 vars:
   # Use APP_NAME from .env as BIN_NAME for backward compatibility
   BIN_NAME: "{{.APP_NAME}}"
-  # Release version - update this when you want to create a new release
-  RELEASE_VERSION: "0.2.4"
+  # Release version - read from versions.txt (single source of truth)
+  RELEASE_VERSION:
+    sh: cat versions.txt
 
 tasks:
   clean:
@@ -69,6 +70,33 @@ tasks:
     cmds:
       - goreleaser check
 
+  bump:
+    desc: Bump version (usage task bump -- <major|minor|patch>)
+    cmds:
+      - go run ./cmd/bump {{.CLI_ARGS}}
+
+  bump:major:
+    desc: Bump major version (e.g., 0.2.4 -> 1.0.0)
+    cmds:
+      - go run ./cmd/bump major
+
+  bump:minor:
+    desc: Bump minor version (e.g., 0.2.4 -> 0.3.0)
+    cmds:
+      - go run ./cmd/bump minor
+
+  bump:patch:
+    desc: Bump patch version (e.g., 0.2.4 -> 0.2.5)
+    cmds:
+      - go run ./cmd/bump patch
+
+  version:
+    desc: Show current version
+    cmds:
+      - |
+        echo "Current version: {{.RELEASE_VERSION}}"
+        echo "From file: versions.txt"
+
   release:
     desc: Create a release (requires git tag)
     cmds:
@@ -100,12 +128,43 @@ tasks:
     cmds:
       - goreleaser release --clean --skip=brew,scoop,chocolatey,snap
 
+  # Release Management (Go-based, no shell scripts)
+  release-via-git:
+    desc: Create and push git tag to trigger release (Go-based)
+    cmds:
+      - go run ./cmd/release
+
+  update-version:
+    desc: Version management info (all automatic via versions.txt)
+    cmds:
+      - |
+        echo "📁 Single Source of Truth: versions.txt"
+        echo "📦 Current Version: {{.RELEASE_VERSION}}"
+        echo
+        echo "🔄 Version Management (100% Automatic):"
+        echo "   📦 NPM: GoReleaser generates package.json with {{.Version}} during release"
+        echo "   🍺 Homebrew: Templates use {{.Version}} placeholder"
+        echo "   🥤 Scoop: Templates use {{.Version}} placeholder"
+        echo
+        echo "⚡ Version Bump Commands:"
+        echo "   task bump:patch  # {{.RELEASE_VERSION}} -> next patch"
+        echo "   task bump:minor  # {{.RELEASE_VERSION}} -> next minor.0"
+        echo "   task bump:major  # {{.RELEASE_VERSION}} -> next major.0.0"
+        echo
+        echo "🚀 Release Process:"
+        echo "   1. task bump:patch (or minor/major)"
+        echo "   2. task release-via-git"
+
   setup-release:
-    desc: Setup everything for a release (update version in vars section first)
+    desc: Setup everything for a release (use bump:patch/minor/major first)
     cmds:
       - |
         echo "🚀 Setting up release for LNB v{{.RELEASE_VERSION}}"
+        echo "   📁 Version source: versions.txt"
         echo
+      - |
+        echo "ℹ️  Version Management:"
+        task update-version
       - |
         echo "🧪 Running tests..."
         task test:all
@@ -127,7 +186,7 @@ tasks:
         git add .
         git commit -m "Release v{{.RELEASE_VERSION}}
 
-        - Update version to {{.RELEASE_VERSION}}"
+        - Bump version to {{.RELEASE_VERSION}}"
         
         echo "🏷️  Creating git tag..."
         git tag "v{{.RELEASE_VERSION}}"

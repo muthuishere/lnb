@@ -83,7 +83,7 @@ release:
     
     A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH.
 
-# Homebrew Tap
+# Homebrew Tap - Separate Repository
 homebrew_casks:
   - name: lnb
     description: "A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH"
@@ -91,7 +91,7 @@ homebrew_casks:
     binary: lnb
     repository:
       owner: muthuishere
-      name: lnb
+      name: homebrew-lnb
       branch: main
       token: "{{ .Env.GITHUB_TOKEN }}"
     directory: Casks
@@ -106,7 +106,7 @@ homebrew_casks:
             system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/lnb"]
           end
 
-# Scoop Bucket
+# Scoop Bucket - Separate Repository
 scoops:
   - name: lnb
     description: "A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH"
@@ -114,22 +114,66 @@ scoops:
     license: "MIT"
     repository:
       owner: muthuishere
-      name: lnb
+      name: scoop-lnb
       branch: main
       token: "{{ .Env.GITHUB_TOKEN }}"
-    directory: scoop/bucket
+    directory: bucket
     commit_author:
       name: goreleaserbot
       email: goreleaser@carlosbecker.com
     commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
 
-# NPM Package Publishing  
+# NPM Package Publishing (using publishers since npms might not be available in this version)
 publishers:
   - name: npm
+    # Use a script that creates package.json on-the-fly
     cmd: |
-      # Update package.json version
-      npm version {{ .Version }} --no-git-tag-version
-      # Publish to NPM
+      cat > package.json << EOF
+      {
+        "name": "lnb-cli",
+        "version": "{{ .Version }}",
+        "description": "Link Binary - A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH",
+        "main": "bin/lnb",
+        "bin": {
+          "lnb": "bin/lnb"
+        },
+        "scripts": {
+          "postinstall": "node scripts/install.js"
+        },
+        "keywords": [
+          "cli",
+          "binary",
+          "link",
+          "path",
+          "symlink",
+          "cross-platform",
+          "utility",
+          "command-line"
+        ],
+        "author": "muthuishere",
+        "license": "MIT",
+        "homepage": "https://github.com/muthuishere/lnb",
+        "repository": {
+          "type": "git",
+          "url": "https://github.com/muthuishere/lnb.git"
+        },
+        "bugs": {
+          "url": "https://github.com/muthuishere/lnb/issues"
+        },
+        "engines": {
+          "node": ">=14"
+        },
+        "os": [
+          "darwin",
+          "linux",
+          "win32"
+        ],
+        "cpu": [
+          "x64",
+          "arm64"
+        ]
+      }
+      EOF
       npm publish --access public
     dir: "."
     env:
