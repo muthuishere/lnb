@@ -92,7 +92,32 @@ tasks:
 
   version:
     desc: Show current version
+  bump:
+    desc: Bump version (usage task bump -- <major|minor|patch>)
     cmds:
+      - go run ./cmd/bump {{.CLI_ARGS}}
+
+  bump:major:
+    desc: Bump major version (e.g., 0.2.4 -> 1.0.0)
+    cmds:
+      - go run ./cmd/bump major
+
+  bump:minor:
+    desc: Bump minor version (e.g., 0.2.4 -> 0.3.0)
+    cmds:
+      - go run ./cmd/bump minor
+
+  bump:patch:
+    desc: Bump patch version (e.g., 0.2.4 -> 0.2.5)
+    cmds:
+      - go run ./cmd/bump patch
+
+  version:
+    desc: Show current version
+    cmds:
+      - |
+        echo "Current version: {{.RELEASE_VERSION}}"
+        echo "From file: versions.txt"
       - |
         echo "Current version: {{.RELEASE_VERSION}}"
         echo "From file: versions.txt"

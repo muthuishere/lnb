@@ -123,4 +123,4 @@ scoops:
       email: goreleaser@carlosbecker.com
     commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
 
-# NPM Package Publishing handled separately via goreleaser-npm-publisher
+
