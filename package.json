@@ -1,6 +1,6 @@
 {
   "name": "lnb-cli",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Link Binary - A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH",
   "main": "bin/lnb",
   "bin": {
