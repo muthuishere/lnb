@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   goreleaser:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest  # Changed to windows for Chocolatey support
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,6 +30,11 @@ jobs:
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install Chocolatey CLI
+        run: |
+          # Chocolatey is pre-installed on Windows runners
+          choco --version
 
       - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v6
