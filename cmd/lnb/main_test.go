@@ -56,7 +56,7 @@ func setupTestEnvironment(t *testing.T) (projectRoot, testLnbPath, testAssetsDir
 
 	// Check if test-lnb binary exists
 	if _, err := os.Stat(testLnbPath); os.IsNotExist(err) {
-		t.Fatalf("test-lnb binary not found at %s. Please run 'task build:test' first", testLnbPath)
+		t.Fatalf("test-lnb binary not found at %s. Please run 'task test:build' first", testLnbPath)
 	}
 
 	// Create test assets directory

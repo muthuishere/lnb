@@ -8,7 +8,7 @@ vars:
   # Use APP_NAME from .env as BIN_NAME for backward compatibility
   BIN_NAME: "{{.APP_NAME}}"
   # Release version - update this when you want to create a new release
-  RELEASE_VERSION: "0.2.1"
+  RELEASE_VERSION: "0.2.2"
 
 tasks:
   clean:
@@ -30,7 +30,7 @@ tasks:
   test:build:
     desc: Build test binary for integration tests
     cmds:
-      - go build -o dist/test-{{.BIN_NAME}} ./cmd/lnb
+      - go build -o dist/test-lnb ./cmd/lnb
 
   test:integration:
     desc: Run integration tests using Go unit tests
