@@ -7,6 +7,8 @@ dotenv: ['.env']
 vars:
   # Use APP_NAME from .env as BIN_NAME for backward compatibility
   BIN_NAME: "{{.APP_NAME}}"
+  # Release version - update this when you want to create a new release
+  RELEASE_VERSION: "0.1.1"
 
 tasks:
   clean:
@@ -48,10 +50,6 @@ tasks:
       - task: test:unit
       - task: test:integration
 
-  test:
-    desc: Run tests
-    cmds:
-      - go test ./...
 
   install:
     desc: Install LNB locally
@@ -70,16 +68,6 @@ tasks:
     desc: Check GoReleaser configuration
     cmds:
       - goreleaser check
-
-  update-formula:
-    desc: Update Homebrew formula with current version from .env
-    cmds:
-      - go run ./scripts/formulaupdate/main.go 
-        -version="{{.APP_VERSION}}" 
-        -description="{{.APP_DESCRIPTION}}" 
-        -homepage="https://github.com/{{.APP_AUTHOR}}/{{.APP_NAME}}" 
-        -license="MIT" 
-        -formula-path="../homebrew-tap/Formula/{{.APP_NAME}}.rb"
 
   release:
     desc: Create a release (requires git tag)
@@ -111,5 +99,74 @@ tasks:
     desc: Create GitHub release only
     cmds:
       - goreleaser release --clean --skip=brew,scoop,chocolatey,snap
+
+  setup-release:
+    desc: Setup everything for a release (update version in vars section first)
+    cmds:
+      - |
+        echo "🚀 Setting up release for LNB v{{.RELEASE_VERSION}}"
+        echo
+      - |
+        echo "🧪 Running tests..."
+        task test:all
+        echo "✅ Tests passed"
+      - |
+        echo "🔍 Checking GoReleaser configuration..."
+        goreleaser check
+        echo "✅ GoReleaser config is valid"
+      - |
+        echo "📦 Testing release build..."
+        goreleaser build --clean --snapshot
+        echo "✅ Release build successful"
+      - |
+        echo "📋 Git status:"
+        git status --porcelain
+        echo
+        
+        echo "💾 Committing changes..."
+        git add .
+        git commit -m "Release v{{.RELEASE_VERSION}}
+
+        - Update version to {{.RELEASE_VERSION}}"
+        
+        echo "🏷️  Creating git tag..."
+        git tag "v{{.RELEASE_VERSION}}"
+        
+        echo
+        echo "🎉 Release setup complete!"
+        echo
+        echo "Next steps:"
+        echo "1. Review the changes: git log --oneline -3"
+        echo "2. Push the changes: git push origin main"
+        echo "3. Push the tag to trigger release: git push origin v{{.RELEASE_VERSION}}"
+        echo
+        echo "Or run: task push-release"
+
+  push-release:
+    desc: Push the current release (commits and tags) to trigger GitHub release
+    cmds:
+      - |
+        echo "🚀 Pushing release to GitHub..."
+        
+        # Check if we're on main branch
+        CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+        if [ "$CURRENT_BRANCH" != "main" ]; then
+          echo "⚠️  Warning: You're not on the main branch (current: $CURRENT_BRANCH)"
+          echo "Continue anyway? (y/N)"
+          read CONFIRM
+          if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
+            echo "❌ Cancelled"
+            exit 1
+          fi
+        fi
+        
+        echo "📤 Pushing commits..."
+        git push origin $CURRENT_BRANCH
+        
+        echo "📤 Pushing tags..."
+        git push origin --tags
+        
+        echo "✅ Release pushed! Check GitHub Actions for the release build."
+        echo "🔗 https://github.com/{{.APP_AUTHOR}}/{{.APP_NAME}}/actions"
 
 

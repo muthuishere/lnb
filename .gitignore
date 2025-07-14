@@ -1,3 +1,6 @@
 .env
 .idea
 dist
+
+# Casks directory contains template files - keep the template but ignore temporary release files
+# Casks/*.rb files will be overwritten during releases
