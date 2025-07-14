@@ -84,25 +84,27 @@ release:
     A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH.
 
 # Homebrew Tap
-brews:
+homebrew_casks:
   - name: lnb
     description: "A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH"
     homepage: "https://github.com/muthuishere/lnb"
-    license: "MIT"
+    binary: lnb
     repository:
       owner: muthuishere
-      name: homebrew-tap
+      name: lnb
       branch: main
-      token: "{{ .Env.HOMEBREW_GITHUB_TOKEN }}"
-    directory: Formula
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    directory: Casks
     commit_author:
       name: goreleaserbot
       email: goreleaser@carlosbecker.com
-    commit_msg_template: "Brew formula update for {{ .ProjectName }} version {{ .Tag }}"
-    install: |
-      bin.install "lnb"
-    test: |
-      system "#{bin}/lnb", "--version"
+    commit_msg_template: "Cask update for {{ .ProjectName }} version {{ .Tag }}"
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/lnb"]
+          end
 
 # Scoop Bucket
 scoops:

@@ -29,8 +29,11 @@ I recommend using a package manager if you can—setup is instant.
 
 - **Homebrew (macOS/Linux)**  
   ```bash
-  brew tap muthuishere/homebrew-tap
-  brew install lnb
+  # Add this repository as a tap
+  brew tap muthuishere/lnb https://github.com/muthuishere/lnb
+  
+  # Install LNB
+  brew install --cask lnb
   ```
 
   *Why Homebrew?* Everyone on macOS/Linux already has it, and updates are a breeze.
@@ -214,6 +217,22 @@ This enables the `lnb list` command and helps prevent conflicts.
    ```bash
    task install
    ```
+
+## Package Management
+
+### Homebrew Cask
+
+The `Casks/` directory contains the Homebrew Cask definition that's automatically generated during releases. This allows users to install LNB directly from this repository:
+
+```bash
+brew tap muthuishere/lnb https://github.com/muthuishere/lnb
+brew install --cask lnb
+```
+
+The cask handles:
+- Binary installation into PATH
+- macOS security (quarantine removal)
+- Clean uninstallation with `brew uninstall --cask lnb`
 
 ## Command Reference
 

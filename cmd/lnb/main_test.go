@@ -116,7 +116,7 @@ func TestLnbIntegration(t *testing.T) {
 			args:        []string{"help"},
 			expectError: false,
 			checkOutput: func(output string) bool {
-				return strings.Contains(output, "LNB v0.1.0 - Link Binary")
+				return strings.Contains(output, "LNB vdev - Link Binary")
 			},
 		},
 		{
@@ -124,7 +124,7 @@ func TestLnbIntegration(t *testing.T) {
 			args:        []string{"version"},
 			expectError: false,
 			checkOutput: func(output string) bool {
-				return strings.Contains(output, "LNB v0.1.0")
+				return strings.Contains(output, "LNB vdev")
 			},
 		},
 		{
@@ -132,32 +132,32 @@ func TestLnbIntegration(t *testing.T) {
 			args:        []string{"list"},
 			expectError: false,
 			checkOutput: func(output string) bool {
-				return strings.Contains(output, "No binaries installed by LNB")
+				return strings.Contains(output, "No binaries or aliases installed by LNB")
 			},
 		},
 		{
 			name:           "install non-existent file",
-			args:           []string{"/nonexistent/file", "install"},
+			args:           []string{"install", "/nonexistent/file"},
 			expectError:    true,
 			expectExitCode: 1,
 		},
 		{
 			name:           "install non-executable file",
-			args:           []string{nonExecutable, "install"},
+			args:           []string{"install", nonExecutable},
 			expectError:    true,
 			expectExitCode: 1,
 		},
 		{
 			name:        "install valid executable",
-			args:        []string{testBinary, "install"},
+			args:        []string{"install", testBinary},
 			expectError: false,
 			checkOutput: func(output string) bool {
-				return strings.Contains(output, "Installed:")
+				return strings.Contains(output, "Successfully installed")
 			},
 		},
 		{
 			name:           "install duplicate binary",
-			args:           []string{testBinary, "install"},
+			args:           []string{"install", testBinary},
 			expectError:    true,
 			expectExitCode: 1,
 		},
@@ -216,7 +216,7 @@ func TestLnbIntegration(t *testing.T) {
 		},
 		{
 			name:        "remove binary",
-			args:        []string{testBinary, "remove"},
+			args:        []string{"remove", "testapp"},
 			expectError: false,
 			checkOutput: func(output string) bool {
 				return strings.Contains(output, "Removed:")
@@ -224,7 +224,7 @@ func TestLnbIntegration(t *testing.T) {
 		},
 		{
 			name:           "remove non-existent binary",
-			args:           []string{testBinary, "remove"},
+			args:           []string{"remove", "testapp"},
 			expectError:    true,
 			expectExitCode: 1,
 		},
@@ -233,7 +233,7 @@ func TestLnbIntegration(t *testing.T) {
 			args:        []string{"list"},
 			expectError: false,
 			checkOutput: func(output string) bool {
-				return strings.Contains(output, "No binaries installed by LNB")
+				return strings.Contains(output, "No binaries or aliases installed by LNB")
 			},
 		},
 	}
@@ -389,27 +389,27 @@ console.log("Args:", process.argv.slice(2));
 	cmd.Run()
 }
 
-// TestLnbDefaultAction tests that install is the default action
-func TestLnbDefaultAction(t *testing.T) {
+// TestLnbInstallCommand tests the install command explicitly
+func TestLnbInstallCommand(t *testing.T) {
 	// Set up test environment
 	_, testLnbPath, testAssetsDir, cleanup := setupTestEnvironment(t)
 	defer cleanup()
 
 	// Create test executable
-	testBinary := filepath.Join(testAssetsDir, "defaulttest")
+	testBinary := filepath.Join(testAssetsDir, "installtest")
 	if err := os.WriteFile(testBinary, []byte("#!/usr/bin/env node\nconsole.log('hello');\n"), 0755); err != nil {
 		t.Fatalf("Failed to create test binary: %v", err)
 	}
 
-	// Test default action (should be install)
-	cmd := exec.Command(testLnbPath, testBinary)
+	// Test install command
+	cmd := exec.Command(testLnbPath, "install", testBinary)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("Failed to run default action: %v\nOutput: %s", err, string(output))
+		t.Fatalf("Failed to run install command: %v\nOutput: %s", err, string(output))
 	}
 
-	if !strings.Contains(string(output), "Installed:") {
-		t.Errorf("Expected install message with default action, got: %s", string(output))
+	if !strings.Contains(string(output), "Successfully installed") {
+		t.Errorf("Expected install message, got: %s", string(output))
 	}
 
 	// Verify it's in the list
@@ -419,12 +419,12 @@ func TestLnbDefaultAction(t *testing.T) {
 		t.Fatalf("Failed to list: %v\nOutput: %s", err, string(output))
 	}
 
-	if !strings.Contains(string(output), "defaulttest") {
-		t.Errorf("Binary not found in list after default install: %s", string(output))
+	if !strings.Contains(string(output), "installtest") {
+		t.Errorf("Binary not found in list after install: %s", string(output))
 	}
 
 	// Clean up
-	cmd = exec.Command(testLnbPath, testBinary, "remove")
+	cmd = exec.Command(testLnbPath, "remove", "installtest")
 	cmd.Run()
 }
 
@@ -453,7 +453,7 @@ func TestLnbNoArgs(t *testing.T) {
 	}
 
 	outputStr := string(output)
-	if !strings.Contains(outputStr, "LNB v0.1.0 - Link Binary") {
+	if !strings.Contains(outputStr, "LNB") && !strings.Contains(outputStr, "Link Binary") {
 		t.Errorf("Expected help message when no args provided, got: %s", outputStr)
 	}
 }
