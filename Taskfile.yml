@@ -134,6 +134,11 @@ tasks:
     cmds:
       - go run ./cmd/release
 
+  release-via-local:
+    desc: Create local git tag without pushing (Go-based)
+    cmds:
+      - go run ./cmd/release --local
+
   update-version:
     desc: Version management info (all automatic via versions.txt)
     cmds:
