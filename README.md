@@ -27,6 +27,14 @@ Have you ever spent too much time tweaking your PATH, creating symlinks, or writ
 
 I recommend using a package manager if you can—setup is instant.
 
+- **NPM (Cross-platform)**  
+  ```bash
+  # Install globally via NPM
+  npm install -g lnb-cli
+  ```
+
+  *Why NPM?* Available everywhere Node.js is installed, excellent global reach, and automatic platform detection.
+
 - **Homebrew (macOS/Linux)**  
   ```bash
   # Add this repository as a tap
@@ -37,14 +45,6 @@ I recommend using a package manager if you can—setup is instant.
   ```
 
   *Why Homebrew?* Everyone on macOS/Linux already has it, and updates are a breeze.
-
-- **Chocolatey (Windows)**
-
-  ```powershell
-  choco install lnb
-  ```
-
-  *Why Chocolatey?* It's the de facto on Windows—no extra hassle.
 
 - **Scoop (Windows)**
 
