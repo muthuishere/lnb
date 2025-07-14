@@ -1,25 +1,15 @@
 {
-    "version": "0.1.0",
-    "description": "A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH",
-    "homepage": "https://github.com/muthuishere/lnb",
-    "license": "MIT",
+    "version": "0.2.3",
     "architecture": {
         "64bit": {
-            "url": "https://github.com/muthuishere/lnb/releases/download/v0.1.0/lnb_0.1.0_Windows_x86_64.tar.gz",
+            "url": "https://github.com/muthuishere/lnb/releases/download/v0.2.3/lnb_0.2.3_Windows_x86_64.tar.gz",
             "bin": [
                 "lnb.exe"
             ],
-            "hash": "sha256:abc123..."
+            "hash": "e9653b891a579ad191ea51600f3a01190820a2c1e47d520083d6596c3d63a188"
         }
     },
-    "checkver": {
-        "github": "https://github.com/muthuishere/lnb"
-    },
-    "autoupdate": {
-        "architecture": {
-            "64bit": {
-                "url": "https://github.com/muthuishere/lnb/releases/download/v$version/lnb_$version_Windows_x86_64.tar.gz"
-            }
-        }
-    }
+    "homepage": "https://github.com/muthuishere/lnb",
+    "license": "MIT",
+    "description": "A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH"
 }
