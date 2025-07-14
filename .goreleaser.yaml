@@ -126,18 +126,7 @@ scoops:
 # NPM Package Publishing - Uses package.json updated by bump utility
 publishers:
   - name: npm
-    cmd: |
-      # Verify package.json exists
-      if [ ! -f "package.json" ]; then
-        echo "❌ package.json not found. Run 'task bump:patch' first to generate it."
-        exit 1
-      fi
-      
-      # Show current package info
-      echo "📦 Publishing $(cat package.json | grep '"name"' | cut -d'"' -f4) v{{ .Version }} to NPM..."
-      
-      # Publish to NPM
-      npm publish --access public
+    cmd: sh -c 'if [ -f "package.json" ]; then echo "📦 Publishing to NPM..." && npm publish --access public; else echo "❌ package.json not found"; exit 1; fi'
     dir: "."
     env:
       - NPM_TOKEN={{ .Env.NPM_TOKEN }}
