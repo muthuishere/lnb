@@ -130,15 +130,19 @@ tasks:
 
   # Release Management (Go-based, no shell scripts)
   release-via-git:
-    desc: Push commits and tags to origin (triggers GitHub Actions release)
+    desc: Push commits and tags to origin (release via manual GitHub Actions)
     cmds:
       - |
-        echo "🚀 Pushing to GitHub to trigger release..."
+        echo "🚀 Pushing to GitHub..."
         echo "📤 Pushing commits..."
         git push origin main
         echo "📤 Pushing tags..."
         git push origin --tags
-        echo "✅ Release pushed! Check GitHub Actions for the release build."
+        echo "✅ Commits and tags pushed!"
+        echo ""
+        echo "🔧 Next step: Trigger release manually on GitHub:"
+        echo "   🌐 Go to: https://github.com/muthuishere/lnb/actions/workflows/release.yml"
+        echo "   ▶️  Click 'Run workflow' button to start the release"
 
   release-via-local:
     desc: Run GoReleaser locally to publish release
