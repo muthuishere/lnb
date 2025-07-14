@@ -24,8 +24,11 @@ func main() {
 		fmt.Println("  1. Update versions.txt")
 		fmt.Println("  2. Generate/update package.json")
 		fmt.Println("  3. Commit changes")
-		fmt.Println("  4. Create git tag")
-		fmt.Println("  5. Push to remote")
+		fmt.Println("  4. Create git tag (local)")
+		fmt.Println()
+		fmt.Println("After bump, choose release method:")
+		fmt.Println("  • task release-via-git   (push to GitHub Actions)")
+		fmt.Println("  • task release-via-local (release locally)")
 		os.Exit(1)
 	}
 
@@ -131,20 +134,16 @@ func main() {
 	}
 	fmt.Printf("✅ Created git tag %s\n", tagName)
 
-	// Step 5: Push to remote
-	fmt.Println("🚀 Step 5: Pushing to remote...")
-	err = pushToRemote(tagName)
-	if err != nil {
-		fmt.Printf("❌ Error pushing to remote: %v\n", err)
-		os.Exit(1)
-	}
-	fmt.Printf("✅ Pushed commits and tag %s to remote\n", tagName)
-
 	fmt.Println()
 	fmt.Println("🎉 Version bump complete!")
 	fmt.Printf("📦 Version: %s -> %s\n", currentVersion, newVersion)
-	fmt.Printf("🏷️  Tag: %s\n", tagName)
-	fmt.Println("🚀 Ready for release with: task release")
+	fmt.Printf("🏷️  Tag: %s (local)\n", tagName)
+	fmt.Println()
+	fmt.Println("🚀 Next Steps:")
+	fmt.Println("   • Push & Release via GitHub Actions: task release-via-git")
+	fmt.Println("   • Release locally (faster):          task release-via-local")
+	fmt.Println()
+	fmt.Printf("   Git status: ✅ Ready to push tag %s\n", tagName)
 }
 
 func updatePackageJson(version string) error {

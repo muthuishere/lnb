@@ -130,14 +130,22 @@ tasks:
 
   # Release Management (Go-based, no shell scripts)
   release-via-git:
-    desc: Create and push git tag to trigger release (Go-based)
+    desc: Push commits and tags to origin (triggers GitHub Actions release)
     cmds:
-      - go run ./cmd/release
+      - |
+        echo "🚀 Pushing to GitHub to trigger release..."
+        echo "📤 Pushing commits..."
+        git push origin main
+        echo "📤 Pushing tags..."
+        git push origin --tags
+        echo "✅ Release pushed! Check GitHub Actions for the release build."
 
   release-via-local:
-    desc: Create local git tag without pushing (Go-based)
+    desc: Run GoReleaser locally to publish release
     cmds:
-      - go run ./cmd/release --local
+      - |
+        echo "🚀 Running local release with GoReleaser..."
+        goreleaser release --clean
 
   update-version:
     desc: Version management info (all automatic via versions.txt)
