@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   goreleaser:
-    runs-on: windows-latest  # Changed to windows for Chocolatey support
+    runs-on: ubuntu-latest  # Back to Ubuntu since we're using NPM instead of Chocolatey
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,16 +25,17 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          registry-url: 'https://registry.npmjs.org'
+
       - name: Install Task
         uses: arduino/setup-task@v2
         with:
           version: 3.x
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Install Chocolatey CLI
-        run: |
-          # Chocolatey is pre-installed on Windows runners
-          choco --version
 
       - name: Install GoReleaser
         uses: goreleaser/goreleaser-action@v6
@@ -50,6 +51,7 @@ jobs:
         run: task release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CHOCO_API_KEY: ${{ secrets.CHOCO_API_KEY }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           
 
