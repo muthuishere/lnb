@@ -157,6 +157,9 @@ tasks:
       - |
         echo "🚀 Running local release with GoReleaser..."
         goreleaser release --clean
+      - |
+        echo "📦 Publishing to NPM via goreleaser-npm-publisher..."
+        npx -y goreleaser-npm-publisher publish --clean --token {{.NPM_TOKEN}}
 
   update-version:
     desc: Version management info (all automatic via versions.txt)

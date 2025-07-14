@@ -105,7 +105,7 @@ func main() {
 	}
 	fmt.Printf("✅ Updated versions.txt to %s\n", newVersion)
 
-	// Step 2: Commit changes  
+	// Step 2: Commit changes
 	fmt.Println("💾 Step 2: Committing changes...")
 	err = commitChanges(newVersion)
 	if err != nil {
@@ -160,7 +160,7 @@ func isGitClean() bool {
 		}
 
 		filename := parts[1]
-		// Allow only versions.txt to be modified during bump  
+		// Allow only versions.txt to be modified during bump
 		if filename != "versions.txt" {
 			fmt.Printf("   Uncommitted changes in: %s\n", filename)
 			return false
