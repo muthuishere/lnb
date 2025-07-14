@@ -123,57 +123,20 @@ scoops:
       email: goreleaser@carlosbecker.com
     commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
 
-# NPM Package Publishing (using publishers since npms might not be available in this version)
+# NPM Package Publishing - Uses package.json updated by bump utility
 publishers:
   - name: npm
-    # Use a script that creates package.json on-the-fly
     cmd: |
-      cat > package.json << EOF
-      {
-        "name": "lnb-cli",
-        "version": "{{ .Version }}",
-        "description": "Link Binary - A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH",
-        "main": "bin/lnb",
-        "bin": {
-          "lnb": "bin/lnb"
-        },
-        "scripts": {
-          "postinstall": "node scripts/install.js"
-        },
-        "keywords": [
-          "cli",
-          "binary",
-          "link",
-          "path",
-          "symlink",
-          "cross-platform",
-          "utility",
-          "command-line"
-        ],
-        "author": "muthuishere",
-        "license": "MIT",
-        "homepage": "https://github.com/muthuishere/lnb",
-        "repository": {
-          "type": "git",
-          "url": "https://github.com/muthuishere/lnb.git"
-        },
-        "bugs": {
-          "url": "https://github.com/muthuishere/lnb/issues"
-        },
-        "engines": {
-          "node": ">=14"
-        },
-        "os": [
-          "darwin",
-          "linux",
-          "win32"
-        ],
-        "cpu": [
-          "x64",
-          "arm64"
-        ]
-      }
-      EOF
+      # Verify package.json exists
+      if [ ! -f "package.json" ]; then
+        echo "❌ package.json not found. Run 'task bump:patch' first to generate it."
+        exit 1
+      fi
+      
+      # Show current package info
+      echo "📦 Publishing $(cat package.json | grep '"name"' | cut -d'"' -f4) v{{ .Version }} to NPM..."
+      
+      # Publish to NPM
       npm publish --access public
     dir: "."
     env:
