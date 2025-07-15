@@ -30,7 +30,7 @@ I recommend using a package manager if you can—setup is instant.
 - **NPM (Cross-platform)**  
   ```bash
   # Install globally via NPM
-  npm install -g lnb-cli
+  npm install -g lnb
   ```
 
   *Why NPM?* Available everywhere Node.js is installed, excellent global reach, and automatic platform detection.
@@ -229,7 +229,7 @@ Package manager configurations are maintained in separate repositories to avoid 
 
 - **Homebrew Cask**: https://github.com/muthuishere/homebrew-lnb
 - **Scoop Bucket**: https://github.com/muthuishere/scoop-lnb  
-- **NPM Package**: Published directly to npmjs.org as `lnb-cli`
+- **NPM Package**: Published directly to npmjs.org as `lnb`
 
 These are automatically updated by GoReleaser when new versions are released.
 

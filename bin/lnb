@@ -2,5 +2,5 @@
 
 console.log('This is a placeholder. The actual LNB binary will be downloaded during npm install.');
 console.log('If you see this message, the installation may have failed.');
-console.log('Please try reinstalling: npm install -g lnb-cli');
+console.log('Please try reinstalling: npm install -g lnb');
 process.exit(1);
