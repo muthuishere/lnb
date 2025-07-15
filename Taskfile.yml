@@ -155,7 +155,7 @@ tasks:
 
   # Release Management (Go-based, no shell scripts)
   release-via-git:
-    desc: Push commits and current tag to origin, then trigger GitHub Actions release
+    desc: Push commits and current tag to origin to trigger automatic GitHub Actions release
     cmds:
       - |
         echo "🚀 Pushing to GitHub..."
@@ -165,16 +165,8 @@ tasks:
         git push origin v{{.RELEASE_VERSION}}
         echo "✅ Commits and tag pushed!"
         echo ""
-        echo "🚀 Triggering GitHub Actions release workflow..."
-        if command -v gh >/dev/null 2>&1; then
-          gh workflow run release.yml
-          echo "✅ Release workflow triggered!"
-          echo "🌐 Check status: https://github.com/muthuishere/lnb/actions"
-        else
-          echo "⚠️  GitHub CLI (gh) not found. Manual trigger required:"
-          echo "   🌐 Go to: https://github.com/muthuishere/lnb/actions/workflows/release.yml"
-          echo "   ▶️  Click 'Run workflow' button to start the release"
-        fi
+        echo "🚀 GitHub Actions will automatically trigger the release workflow"
+        echo "🌐 Check status: https://github.com/muthuishere/lnb/actions"
 
   release-via-local:
     desc: Run GoReleaser locally to publish release
