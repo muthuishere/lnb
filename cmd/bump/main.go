@@ -27,7 +27,7 @@ func main() {
 		fmt.Println()
 		fmt.Println("After bump, choose release method:")
 		fmt.Println("  • task release-via-git   (push to GitHub Actions)")
-		fmt.Println("  • task release-via-local (release locally)")
+		fmt.Println("  • task release-npm-via-local (release locally)")
 		os.Exit(1)
 	}
 

@@ -14,10 +14,12 @@ Have you ever spent too much time tweaking your PATH, creating symlinks, or writ
 
 ## Features
 
+- **Smart command detection**: Just pass a file path - LNB automatically installs it
 - **Cross-platform**: Same command on Linux, macOS, and Windows  
 - **Binary installation**: Install any executable to your PATH with one command
 - **Command aliases**: Create shortcuts for complex commands (e.g., `java -jar myapp.jar`)
 - **Installation tracking**: Keep track of what you've installed with `lnb list`
+- **Path conversion**: Automatically converts relative paths to absolute paths
 - **Zero config**: LNB auto-detects your OS and does the right thing  
 - **Fast**: No dependencies beyond the Go binary itself
 
@@ -46,8 +48,7 @@ I recommend using a package manager if you can—setup is instant.
 
   *Why Homebrew?* Everyone on macOS/Linux already has it, and updates are a breeze.
 
-- **Scoop (Windows)**
-
+- **Scoop (Windows)**  
   ```powershell
   # Add the bucket (separate repository)
   scoop bucket add lnb https://github.com/muthuishere/scoop-lnb
@@ -66,38 +67,52 @@ If you prefer to download directly:
 2. Run LNB to install itself globally:
 
    ```bash
-   ./lnb-[platform] ./lnb-[platform] install
+   ./lnb-[platform] ./lnb-[platform]
    ```
 
    This makes `lnb` available system-wide so you can use LNB to manage other tools.
 
 ## Usage
 
-### Install a Binary
+### Smart Installation (Recommended)
+
+LNB automatically detects when you pass a file path and installs it:
 
 ```bash
-# Default action is "install"
-lnb path/to/binary
-# or explicitly:
-lnb path/to/binary install
+# All of these work the same way - LNB detects the file path
+lnb ./my-binary                    # Relative path
+lnb /path/to/my-binary             # Absolute path  
+lnb ~/Downloads/some-tool          # Home directory path
 ```
+
+**Why it's neat**: No need to remember the `install` command - just point LNB at your binary and it works.
+
+### Explicit Installation (Also Works)
+
+```bash
+# Traditional explicit syntax still works
+lnb install ./my-binary
+lnb install /path/to/my-binary
+```
+
+### What Happens During Installation
 
 - On **Linux/macOS**, this creates:
   ```
-  /usr/local/bin/<binary> -> /absolute/path/to/binary
+  /usr/local/bin/<binary-name> -> /absolute/path/to/binary
   ```
 - On **Windows**, this creates:
   ```
-  %USERPROFILE%\bin\<binary>.cmd
+  %USERPROFILE%\bin\<binary-name>.cmd
   ```
   which wraps your `.exe` or any executable. *(Make sure `%USERPROFILE%\bin` is in your PATH.)*
 
-**Why it's neat**: You don't have to think about where "bin" directories live on each OS—LNB does it.
+**Path Intelligence**: LNB automatically converts relative paths (like `./mybinary`) to absolute paths so your installations work from anywhere.
 
 ### Remove a Binary
 
 ```bash
-lnb path/to/binary remove
+lnb remove binary-name
 ```
 
 Deletes the symlink (or `.cmd` wrapper on Windows), but leaves your original file untouched.
@@ -107,12 +122,15 @@ Deletes the symlink (or `.cmd` wrapper on Windows), but leaves your original fil
 ```bash
 # Create an alias for a complex command
 lnb alias myapp "java -jar ./myapp.jar"
-lnb alias serve "python -m http.server 8080"
+lnb alias serve "python -m http.server 8080"  
 lnb alias deploy "docker run --rm -v $(pwd):/workspace deploy-tool"
+lnb alias build "npm run build && npm run test"
 ```
 
 - **Linux/macOS**: Creates a shell script at `/usr/local/bin/<alias-name>`
 - **Windows**: Creates a batch file at `%USERPROFILE%\bin\<alias-name>.bat`
+
+**Smart path handling**: When creating aliases, LNB converts relative paths in your commands to absolute paths so they work from anywhere.
 
 ### Remove Aliases
 
@@ -128,37 +146,93 @@ lnb list
 
 Shows all binaries and aliases installed by LNB, including:
 - Installation date
+- Type (binary or alias)
 - Source path (for binaries) or command (for aliases)
 - Target location
 
+### Help and Version
+
+```bash
+lnb help        # Show detailed help
+lnb version     # Show version information
+lnb             # Show help (when no arguments provided)
+```
+
 ## Examples
 
-- **Make a dev tool available everywhere**
+### Quick Binary Installation
 
-  ```bash
-  cd ~/projects/mytool
-  lnb mytool         # now "mytool" runs anywhere
-  ```
+```bash
+# Build your Go project
+go build -o mytool ./cmd/mytool
 
-  *Opinion*: I love not having to copy binaries around. One command and it "just works."
+# Install it instantly - LNB detects it's a file path
+lnb ./mytool
 
-- **Create an alias for a Java application**
+# Now "mytool" runs from anywhere
+mytool --help
+```
 
-  ```bash
-  lnb alias myapp "java -jar ./target/myapp.jar"
-  # Now you can run "myapp" from anywhere
-  ```
+### Java Application Alias
 
-- **Uninstall when you're done**
+```bash
+# Instead of remembering the full command
+java -jar /long/path/to/myapp.jar --config production
 
-  ```bash
-  lnb ~/projects/mytool remove
-  lnb unalias myapp
-  ```
+# Create a simple alias
+lnb alias myapp "java -jar /long/path/to/myapp.jar --config production"
 
-  *Opinion*: Removing is just as easy—no more hunting for old symlinks.
+# Now just run
+myapp
+```
+
+### Development Workflow
+
+```bash
+# Install your dev tool
+lnb ./bin/dev-server
+
+# Create shortcuts for common tasks  
+lnb alias dev "npm run dev"
+lnb alias test "npm test -- --watch"
+lnb alias deploy "rsync -av dist/ server:/var/www/"
+
+# Later, clean up
+lnb remove dev-server
+lnb unalias dev test deploy
+```
+
+### Working with Downloaded Tools
+
+```bash
+# Download a binary
+curl -L https://github.com/user/tool/releases/download/v1.0/tool-linux > ~/Downloads/tool
+chmod +x ~/Downloads/tool
+
+# Install it (LNB detects the path automatically)
+lnb ~/Downloads/tool
+
+# Use it anywhere
+tool --version
+```
 
 ## How It Works
+
+### Smart Command Detection
+
+LNB uses intelligent parsing to determine what you want to do:
+
+1. **File path detection**: If the argument looks like a file path (absolute, relative, or contains `/` or `\`), LNB treats it as an install command
+2. **Known command detection**: If the first argument is a known command (`install`, `remove`, `alias`, `unalias`, `list`, `help`, `version`), LNB executes that command
+3. **Fallback**: If uncertain, LNB shows help
+
+```bash
+lnb ./mybinary          # Detected as file path → install
+lnb /usr/bin/tool       # Detected as file path → install  
+lnb list                # Detected as known command → list
+lnb remove mytool       # Detected as known command → remove
+lnb help                # Detected as known command → help
+```
 
 ### Binary Installation
 
@@ -189,10 +263,21 @@ Shows all binaries and aliases installed by LNB, including:
 
 LNB maintains a configuration file at `~/.lnb/config.json` that tracks:
 - What you've installed (binaries and aliases)
-- Source paths and target locations
+- Source paths and target locations  
 - Installation timestamps
+- Entry types (binary or alias)
 
 This enables the `lnb list` command and helps prevent conflicts.
+
+## Error Handling
+
+LNB provides clear error messages for common issues:
+
+- **File doesn't exist**: "File /path/to/file does not exist"
+- **Not executable**: "File is not executable" 
+- **Already installed**: "Binary 'name' is already installed"
+- **Not found for removal**: "Binary 'name' not found"
+- **Invalid alias**: Validates that alias commands are executable
 
 ## Building from Source
 
@@ -200,26 +285,40 @@ This enables the `lnb list` command and helps prevent conflicts.
 - Go 1.23+
 - [Task](https://taskfile.dev) (optional, for automation)
 
+### Available Tasks
+
+```bash
+task build              # Build for current platform
+task build:all          # Build for all platforms using GoReleaser
+task test:unit          # Run unit tests
+task test:integration   # Run integration tests  
+task test:all           # Run all tests
+task install            # Install LNB locally
+task remove             # Remove LNB from local system
+task clean              # Clean build artifacts
+task version            # Show current version
+
+```
+
+### Quick Start
+
 1. Clone the repo:
    ```bash
    git clone https://github.com/muthuishere/lnb.git
    cd lnb
    ```
 
-2. Build for your current platform:
+2. Build and install:
    ```bash
    task build
-   ```
-
-   Or build for all platforms:
-   ```bash
-   task build:all
-   ```
-
-3. Install the built binary:
-   ```bash
    task install
    ```
+
+3. Test it works:
+   ```bash
+   lnb version
+   ```
+
 
 ## Package Management
 
@@ -236,15 +335,29 @@ These are automatically updated by GoReleaser when new versions are released.
 ## Command Reference
 
 ```bash
-lnb <file>                          # Install binary (default action)
-lnb <file> install                  # Install binary explicitly  
-lnb <file> remove                   # Remove binary
-lnb alias <name> <command>          # Create command alias
+# Smart installation (recommended)
+lnb <file-path>                     # Auto-detect and install binary
+
+# Explicit commands
+lnb install <file-path>             # Install binary explicitly  
+lnb remove <binary-name>            # Remove installed binary
+lnb alias <name> "<command>"        # Create command alias
 lnb unalias <name>                  # Remove alias
 lnb list                            # List all installed items
 lnb help                            # Show help
 lnb version                         # Show version information
+lnb                                 # Show help (no arguments)
 ```
+
+### File Path Detection
+
+LNB automatically detects file paths and treats them as install commands when:
+- Path starts with `/` (absolute path)
+- Path starts with `./` or `../` (relative path)  
+- Path starts with `~/` (home directory)
+- Path contains `/` (Unix-style path separator)
+- Path contains `\` (Windows-style path separator)
+- Path exists as a file on the filesystem
 
 ## License
 
