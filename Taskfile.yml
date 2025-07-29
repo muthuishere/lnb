@@ -121,6 +121,7 @@ tasks:
     cmds:
       - |
         echo "🚀 Running release with GoReleaser..."
+        export GITHUB_TOKEN="${GORELEASER_GITHUB_TOKEN}"
         goreleaser release --clean
 
 
