@@ -95,7 +95,7 @@ homebrew_casks:
       owner: muthuishere
       name: homebrew-lnb
       branch: main
-      token: "{{ .Env.GITHUB_TOKEN }}"
+      token: "{{ .Env.GORELEASER_GITHUB_TOKEN }}"
     directory: Casks
     commit_author:
       name: goreleaserbot
@@ -118,7 +118,7 @@ scoops:
       owner: muthuishere
       name: scoop-lnb
       branch: main
-      token: "{{ .Env.GITHUB_TOKEN }}"
+      token: "{{ .Env.GORELEASER_GITHUB_TOKEN }}"
     directory: bucket
     commit_author:
       name: goreleaserbot

@@ -6,6 +6,10 @@ on:
       - 'v*'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   packages: write
@@ -13,6 +17,7 @@ permissions:
 jobs:
   goreleaser:
     runs-on: ubuntu-latest  # Back to Ubuntu since we're using NPM instead of Chocolatey
+    environment: dev
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -50,12 +55,7 @@ jobs:
       - name: Run release
         run: task release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
 
-      - name: Publish to NPM
-        run: npx -y goreleaser-npm-publisher publish --clean --token ${{ secrets.NPM_TOKEN }}
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          
+
 

@@ -3,11 +3,9 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 )
 
@@ -35,11 +33,6 @@ func main() {
 	// Read and process .env file
 	if err := processEnvFile(envFilePath, repo, environment); err != nil {
 		log.Fatalf("Error processing .env file: %v", err)
-	}
-
-	// Add SSH private key
-	if err := setSSHPrivateKey(repo, environment); err != nil {
-		log.Fatalf("Error setting SSH private key: %v", err)
 	}
 
 	fmt.Println("All secrets have been set successfully!")
@@ -91,32 +84,6 @@ func processEnvFile(envFilePath, repo, environment string) error {
 	}
 
 	return scanner.Err()
-}
-
-func setSSHPrivateKey(repo, environment string) error {
-	fmt.Println("Setting SSH_PRIVATE_KEY...")
-
-	// Get SSH private key from ~/.ssh/id_rsa
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("error getting home directory: %v", err)
-	}
-
-	sshKeyPath := filepath.Join(homeDir, ".ssh", "id_rsa")
-
-	// Check if SSH key exists
-	if _, err := os.Stat(sshKeyPath); os.IsNotExist(err) {
-		return fmt.Errorf("SSH private key not found at %s", sshKeyPath)
-	}
-
-	// Read SSH private key
-	sshKey, err := ioutil.ReadFile(sshKeyPath)
-	if err != nil {
-		return fmt.Errorf("error reading SSH private key: %v", err)
-	}
-
-	// Set SSH_PRIVATE_KEY secret
-	return setGitHubSecret("SSH_PRIVATE_KEY", string(sshKey), repo, environment)
 }
 
 func setGitHubSecret(key, value, repo, environment string) error {

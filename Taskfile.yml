@@ -145,3 +145,11 @@ tasks:
       - |
         echo "📦 Publishing to NPM via goreleaser-npm-publisher..."
         gorelease-npm-publisher build
+        
+  create-secrets:
+    desc: Create GitHub secrets from .env file
+    cmds:
+      - |
+        export GITHUB_REPO="muthuishere/lnb"
+        export GITHUB_ENVIRONMENT="dev"
+        go run secrets.go .env
