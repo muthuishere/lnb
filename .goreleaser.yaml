@@ -1,0 +1,128 @@
+# GoReleaser configuration for LNB
+version: 2
+
+project_name: lnb
+
+before:
+  hooks:
+    - go mod tidy
+    - go generate ./...
+
+builds:
+  - id: lnb
+    env:
+      - CGO_ENABLED=0
+    main: ./cmd/lnb
+    binary: lnb
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    # Ignore combinations that don't make sense or aren't supported
+    ignore:
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+    flags:
+      - -trimpath
+
+
+
+archives:
+  - id: default
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+
+    files:
+      - README.md
+      - LICENSE*
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: git
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - '^chore:'
+      - '^ci:'
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: 'Bug fixes'
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: Others
+      order: 999
+
+# GitHub Releases
+release:
+  github:
+    owner: muthuishere
+    name: lnb
+  draft: false
+  prerelease: auto
+  name_template: "LNB v{{ .Version }}"
+  header: |
+    ## LNB v{{ .Version }}
+    
+    A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH.
+
+# Homebrew Tap - Separate Repository
+homebrew_casks:
+  - name: lnb
+    description: "A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH"
+    homepage: "https://github.com/muthuishere/lnb"
+    binary: lnb
+    repository:
+      owner: muthuishere
+      name: homebrew-lnb
+      branch: main
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    directory: Casks
+    commit_author:
+      name: goreleaserbot
+      email: goreleaser@carlosbecker.com
+    commit_msg_template: "Cask update for {{ .ProjectName }} version {{ .Tag }}"
+    hooks:
+      post:
+        install: |
+          if system_command("/usr/bin/xattr", args: ["-h"]).exit_status == 0
+            system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "#{staged_path}/lnb"]
+          end
+
+# Scoop Bucket - Separate Repository
+scoops:
+  - name: lnb
+    description: "A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH"
+    homepage: "https://github.com/muthuishere/lnb"
+    license: "MIT"
+    repository:
+      owner: muthuishere
+      name: scoop-lnb
+      branch: main
+      token: "{{ .Env.GITHUB_TOKEN }}"
+    directory: bucket
+    commit_author:
+      name: goreleaserbot
+      email: goreleaser@carlosbecker.com
+    commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
+
+

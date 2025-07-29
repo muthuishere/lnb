@@ -1,0 +1,37 @@
+{
+  "name": "lnb",
+  "version": "{{.Version}}",
+  "description": "Link Binary - A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH",
+  "main": "lnb",
+  "bin": {
+    "lnb": "lnb"
+  },
+  "keywords": [
+    "cli",
+    "binary",
+    "link",
+    "path", 
+    "symlink",
+    "cross-platform",
+    "utility",
+    "command-line"
+  ],
+  "author": "muthuishere",
+  "license": "MIT",
+  "homepage": "https://github.com/muthuishere/lnb",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/muthuishere/lnb.git"
+  },
+  "bugs": {
+    "url": "https://github.com/muthuishere/lnb/issues"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "files": [
+    "lnb*",
+    "README.md", 
+    "LICENSE"
+  ]
+}

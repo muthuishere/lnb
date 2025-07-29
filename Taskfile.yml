@@ -1,0 +1,146 @@
+# GoReleaser-based Taskfile
+version: '3'
+
+# Enable .env file loading
+dotenv: ['.env']
+
+vars:
+  # Use APP_NAME from .env as BIN_NAME for backward compatibility
+  BIN_NAME: "{{.APP_NAME}}"
+  # Release version - read from versions.txt (single source of truth)
+  RELEASE_VERSION:
+    sh: cat versions.txt
+
+tasks:
+  clean:
+    desc: Clean build artifacts
+    cmds:
+      - rm -rf dist
+      - mkdir -p dist
+
+  build:
+    desc: Build for current platform
+    cmds:
+      - go build -o dist/{{.BIN_NAME}} ./cmd/lnb
+
+  build:all:
+    desc: Build for all platforms using GoReleaser
+    cmds:
+      - goreleaser build --clean --snapshot
+
+  test:build:
+    desc: Build test binary for integration tests
+    cmds:
+      - go build -o dist/test-lnb ./cmd/lnb
+
+  test:integration:
+    desc: Run integration tests using Go unit tests
+    deps: [test:build]
+    cmds:
+      - cd cmd/lnb && go test -v -run TestLnbIntegration
+
+  test:unit:
+    desc: Run only the main_test.go unit tests
+    deps: [test:build]
+    cmds:
+      - cd cmd/lnb && go test -v -run TestLnb
+
+  test:all:
+    desc: Run all tests (unit and integration)
+    cmds:
+      - task: test:unit
+      - task: test:integration
+
+
+  install:
+    desc: Install LNB locally
+    cmds:
+      - task: build
+      - ./dist/{{.BIN_NAME}} ./dist/{{.BIN_NAME}} install
+
+  remove:
+    desc: Remove LNB from local system
+    cmds:
+      - task: build
+      - ./dist/{{.BIN_NAME}} ./dist/{{.BIN_NAME}} remove
+
+  # GoReleaser commands
+  check:
+    desc: Check GoReleaser configuration
+    cmds:
+      - goreleaser check
+
+  bump:
+    desc: Bump version (usage task bump -- <major|minor|patch>)
+    cmds:
+      - go run ./cmd/bump {{.CLI_ARGS}}
+
+  bump:major:
+    desc: Bump major version (e.g., 0.2.4 -> 1.0.0)
+    cmds:
+      - go run ./cmd/bump major
+
+  bump:minor:
+    desc: Bump minor version (e.g., 0.2.4 -> 0.3.0)
+    cmds:
+      - go run ./cmd/bump minor
+
+  bump:patch:
+    desc: Bump patch version (e.g., 0.2.4 -> 0.2.5)
+    cmds:
+      - go run ./cmd/bump patch
+
+
+
+  version:
+    desc: Show current version
+    cmds:
+      - |
+        echo "Current version: {{.RELEASE_VERSION}}"
+        echo "From file: versions.txt"
+
+
+
+  # Release Management (Go-based, no shell scripts)
+  release-via-git:
+    desc: Push commits and current tag to origin to trigger automatic GitHub Actions release
+    cmds:
+      - |
+        echo "🚀 Pushing to GitHub..."
+        echo "📤 Pushing commits..."
+        git push origin main
+        echo "📤 Pushing current tag v{{.RELEASE_VERSION}}..."
+        git push origin v{{.RELEASE_VERSION}}
+        echo "✅ Commits and tag pushed!"
+        echo ""
+        echo "🚀 GitHub Actions will automatically trigger the release workflow"
+        echo "🌐 Check status: https://github.com/muthuishere/lnb/actions"
+
+  release:
+    desc: Run GoReleaser to publish release
+    cmds:
+      - |
+        echo "🚀 Running release with GoReleaser..."
+        goreleaser release --clean
+
+
+  release-npm-via-local:
+    desc: Run GoReleaser locally to publish release
+    cmds:
+      - |
+        echo "🚀 Running local release with GoReleaser..."
+        goreleaser release --clean
+      - |
+        echo "📦 Publishing to NPM via goreleaser-npm-publisher..."
+        gorelease-npm-publisher  publish --clean --token {{.NPM_TOKEN}}
+
+  build-npm:
+    desc: Build NPM package
+    deps: [build:all]
+    cmds:
+      - |
+        echo "🚀 Running local release with GoReleaser..."
+        goreleaser release --snapshot --clean
+      - |
+        echo "📦 Publishing to NPM via goreleaser-npm-publisher..."
+        gorelease-npm-publisher build
