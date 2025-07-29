@@ -126,6 +126,7 @@ tasks:
 
   release-npm-via-local:
     desc: Run GoReleaser locally to publish release
+    deps: [build:all]
     cmds:
       - |
         echo "🚀 Running local release with GoReleaser..."
