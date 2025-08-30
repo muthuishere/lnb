@@ -14,37 +14,35 @@ var (
 )
 
 func showHelp() {
-	fmt.Printf(`LNB v%s - Link Binary
-
-A cross-platform utility that makes command-line tools accessible from anywhere
-by creating symbolic links or wrapper scripts in your system's PATH.
+	fmt.Printf(`LNB v%s - Cross-Platform Alias Manager
 
 USAGE:
-    lnb [COMMAND] [OPTIONS]
+    lnb <command> [options]
 
 COMMANDS:
-    install <file>              Install a binary to your PATH
-    remove <file>               Remove a binary from your PATH
-    alias <name> <command>      Create an alias that runs a command
+    alias <name> "<command>"    Create an alias for a command
     unalias <name>              Remove an alias
-    list                        List all binaries and aliases installed by LNB
-    help                        Show this help message
-    version                     Show version information
+    <file-path>                 Make a binary globally accessible
+    remove <name>               Remove a binary or alias
+    list                        List everything
+    help                        Show this help
+    version                     Show version
 
 EXAMPLES:
-    lnb install ./mybinary                   # Install mybinary
-    lnb remove ./mybinary                    # Remove mybinary
-    lnb alias myapp "java -jar ./app.jar"    # Create alias for Java app
-    lnb unalias myapp                        # Remove alias
-    lnb list                                 # Show all installed binaries and aliases
-    lnb help                                 # Show this help
+    lnb alias deploy "docker run --rm -v $(pwd):/app deploy-image"
+    lnb alias logs "tail -f /var/log/nginx/access.log"  
+    lnb ./mybinary              Make binary globally accessible
+    lnb remove mybinary         Remove binary
+    lnb unalias deploy          Remove alias
+    lnb list                    Show everything
 
-For more information, visit: https://github.com/muthuishere/lnb
+Same command. All platforms.
+Source: https://github.com/muthuishere/lnb
 `, version)
 }
 
 func showVersion() {
-	fmt.Printf("LNB v%s\n", version)
+	fmt.Printf("lnb v%s\n", version)
 	if commit != "unknown" && date != "unknown" {
 		fmt.Printf("Built from %s on %s\n", commit, date)
 	}
@@ -68,7 +66,7 @@ func isKnownCommand(cmd string) bool {
 	knownCommands := []string{
 		"help", "-h", "--help",
 		"version", "-v", "--version",
-		"list", "ls",
+		"list", "ls", "--ls",
 		"alias", "unalias",
 		"install", "remove",
 	}
@@ -104,7 +102,7 @@ func main() {
 		showHelp()
 	case "version", "-v", "--version":
 		showVersion()
-	case "list", "ls":
+	case "list", "ls", "--ls":
 		handleListCommand()
 	case "alias":
 		handleAliasCommand(args)

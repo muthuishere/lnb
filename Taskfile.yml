@@ -5,8 +5,14 @@ version: '3'
 dotenv: ['.env']
 
 vars:
+  # Repository and environment configuration
+  REPO_OWNER: "muthuishere"
+  REPO_NAME: "lnb"
+  GITHUB_REPO: "{{.REPO_OWNER}}/{{.REPO_NAME}}"
+  GITHUB_SECRET_ENVIRONMENT: "dev"
+  
   # Use APP_NAME from .env as BIN_NAME for backward compatibility
-  BIN_NAME: "{{.APP_NAME}}"
+  BIN_NAME: "lnb"
   # Release version - read from versions.txt (single source of truth)
   RELEASE_VERSION:
     sh: cat versions.txt
@@ -54,6 +60,7 @@ tasks:
 
   install:
     desc: Install LNB locally
+    deps: [build:all]
     cmds:
       - task: build
       - ./dist/{{.BIN_NAME}} ./dist/{{.BIN_NAME}} install
@@ -63,33 +70,14 @@ tasks:
     cmds:
       - task: build
       - ./dist/{{.BIN_NAME}} ./dist/{{.BIN_NAME}} remove
+      - rm -rf /usr/local/bin/lnb
+
 
   # GoReleaser commands
   check:
     desc: Check GoReleaser configuration
     cmds:
       - goreleaser check
-
-  bump:
-    desc: Bump version (usage task bump -- <major|minor|patch>)
-    cmds:
-      - go run ./cmd/bump {{.CLI_ARGS}}
-
-  bump:major:
-    desc: Bump major version (e.g., 0.2.4 -> 1.0.0)
-    cmds:
-      - go run ./cmd/bump major
-
-  bump:minor:
-    desc: Bump minor version (e.g., 0.2.4 -> 0.3.0)
-    cmds:
-      - go run ./cmd/bump minor
-
-  bump:patch:
-    desc: Bump patch version (e.g., 0.2.4 -> 0.2.5)
-    cmds:
-      - go run ./cmd/bump patch
-
 
 
   version:
@@ -102,55 +90,55 @@ tasks:
 
 
   # Release Management (Go-based, no shell scripts)
-  release-via-git:
+  release:
     desc: Push commits and current tag to origin to trigger automatic GitHub Actions release
     cmds:
       - |
         echo "🚀 Pushing to GitHub..."
         echo "📤 Pushing commits..."
         git push origin main
+        if ! git rev-parse "v{{.RELEASE_VERSION}}" >/dev/null 2>&1; then
+          echo "🔖 Creating tag v{{.RELEASE_VERSION}}..."
+          git tag v{{.RELEASE_VERSION}}
+        else
+          echo "🔖 Tag v{{.RELEASE_VERSION}} already exists."
+        fi
         echo "📤 Pushing current tag v{{.RELEASE_VERSION}}..."
         git push origin v{{.RELEASE_VERSION}}
         echo "✅ Commits and tag pushed!"
         echo ""
         echo "🚀 GitHub Actions will automatically trigger the release workflow"
-        echo "🌐 Check status: https://github.com/muthuishere/lnb/actions"
 
-  release:
-    desc: Run GoReleaser to publish release
+  setup:npm-publisher:
+    desc: Install goreleaser-npm-publisher globally
+    cmds:
+      - |
+        if ! command -v goreleaser-npm-publisher &> /dev/null; then
+          echo "📦 Installing @muthuishere/goreleaser-npm-publisher..."
+          npm install -g @muthuishere/goreleaser-npm-publisher
+        else
+          echo "✅ goreleaser-npm-publisher already installed"
+        fi
+
+  publish:
+    desc: Publish to GitHub and NPM (used by both local and CI)
+    deps: [build:all, setup:npm-publisher]
     cmds:
       - |
         echo "🚀 Running release with GoReleaser..."
-        export GITHUB_TOKEN="${GORELEASER_GITHUB_TOKEN}"
-        goreleaser release --clean
-
-
-  release-npm-via-local:
-    desc: Run GoReleaser locally to publish release
-    deps: [build:all]
-    cmds:
-      - |
-        echo "🚀 Running local release with GoReleaser..."
+        export GITHUB_TOKEN="{{.GORELEASER_GITHUB_TOKEN}}"
         goreleaser release --clean
       - |
-        echo "📦 Publishing to NPM via goreleaser-npm-publisher..."
-        gorelease-npm-publisher  publish --clean --token {{.NPM_TOKEN}}
+        echo "📦 Building NPM package..."
+        goreleaser-npm-publisher build
+      - |
+        echo "📦 Publishing to NPM..."
+        goreleaser-npm-publisher publish --clean --token {{.NPM_TOKEN}}
 
-  build-npm:
-    desc: Build NPM package
-    deps: [build:all]
-    cmds:
-      - |
-        echo "🚀 Running local release with GoReleaser..."
-        goreleaser release --snapshot --clean
-      - |
-        echo "📦 Publishing to NPM via goreleaser-npm-publisher..."
-        gorelease-npm-publisher build
-        
   create-secrets:
     desc: Create GitHub secrets from .env file
     cmds:
       - |
-        export GITHUB_REPO="muthuishere/lnb"
-        export GITHUB_ENVIRONMENT="dev"
+        export GITHUB_REPO="{{.GITHUB_REPO}}"
+        export GITHUB_ENVIRONMENT="{{.GITHUB_SECRET_ENVIRONMENT}}"
         go run secrets.go .env

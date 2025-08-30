@@ -30,8 +30,6 @@ builds:
     flags:
       - -trimpath
 
-
-
 archives:
   - id: default
     name_template: >-
@@ -41,7 +39,7 @@ archives:
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
-
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
     files:
       - README.md
       - LICENSE*
@@ -95,7 +93,7 @@ homebrew_casks:
       owner: muthuishere
       name: homebrew-lnb
       branch: main
-      token: "{{ .Env.GORELEASER_GITHUB_TOKEN }}"
+      token: "{{ .Env.GITHUB_TOKEN }}"
     directory: Casks
     commit_author:
       name: goreleaserbot
@@ -118,7 +116,7 @@ scoops:
       owner: muthuishere
       name: scoop-lnb
       branch: main
-      token: "{{ .Env.GORELEASER_GITHUB_TOKEN }}"
+      token: "{{ .Env.GITHUB_TOKEN }}"
     directory: bucket
     commit_author:
       name: goreleaserbot

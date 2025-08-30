@@ -2,9 +2,12 @@
   "name": "lnb",
   "version": "{{.Version}}",
   "description": "Link Binary - A cross-platform utility that makes command-line tools accessible from anywhere by creating symbolic links or wrapper scripts in your system's PATH",
-  "main": "lnb",
+  "main": "bin/lnb",
   "bin": {
-    "lnb": "lnb"
+    "lnb": "bin/lnb"
+  },
+  "scripts": {
+    "postinstall": "node scripts/install.js"
   },
   "keywords": [
     "cli",
@@ -29,9 +32,13 @@
   "engines": {
     "node": ">=14"
   },
-  "files": [
-    "lnb*",
-    "README.md", 
-    "LICENSE"
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
   ]
 }

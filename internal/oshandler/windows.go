@@ -31,8 +31,18 @@ func (h *windowsHandler) Handle(absPath, action string) error {
 		}
 
 		// Check if this binary is already installed
-		if _, exists := cfg.GetEntry(linkNameWithoutExt); exists {
-			return fmt.Errorf("binary '%s' is already installed. Use 'lnb remove %s' first to reinstall", linkNameWithoutExt, linkNameWithoutExt)
+		if entry, exists := cfg.GetEntry(linkNameWithoutExt); exists {
+			// Verify the target file actually exists
+			if _, err := os.Stat(entry.TargetPath); err == nil {
+				return fmt.Errorf("binary '%s' is already installed. Use 'lnb remove %s' first to reinstall", linkNameWithoutExt, linkNameWithoutExt)
+			} else {
+				// Config says it's installed but file doesn't exist - clean up the config
+				fmt.Printf("Warning: Config shows '%s' as installed but target file '%s' doesn't exist. Cleaning up config entry.\n", linkNameWithoutExt, entry.TargetPath)
+				cfg.RemoveEntry(linkNameWithoutExt)
+				if err := cfg.Save(); err != nil {
+					fmt.Printf("Warning: failed to clean up config: %v\n", err)
+				}
+			}
 		}
 
 		// Check if the target path already exists
@@ -63,6 +73,17 @@ func (h *windowsHandler) Handle(absPath, action string) error {
 		}
 
 	case "remove":
+		// Check if this binary was installed by LNB
+		entry, exists := cfg.GetEntry(linkNameWithoutExt)
+		if !exists {
+			return fmt.Errorf("binary '%s' was not installed by LNB", linkNameWithoutExt)
+		}
+
+		// Verify the target path matches what we expect
+		if entry.TargetPath != cmdPath {
+			return fmt.Errorf("binary '%s' target path mismatch: expected %s, found %s", linkNameWithoutExt, cmdPath, entry.TargetPath)
+		}
+
 		err := os.Remove(cmdPath)
 		if err != nil {
 			return fmt.Errorf("failed to remove: %v", err)
@@ -96,8 +117,18 @@ func (h *windowsHandler) HandleAlias(aliasName, command, action string) error {
 		}
 
 		// Check if this alias is already installed
-		if _, exists := cfg.GetEntry(aliasName); exists {
-			return fmt.Errorf("alias '%s' is already installed. Use 'lnb unalias %s' first to reinstall", aliasName, aliasName)
+		if entry, exists := cfg.GetEntry(aliasName); exists {
+			// Verify the target file actually exists
+			if _, err := os.Stat(entry.TargetPath); err == nil {
+				return fmt.Errorf("alias '%s' is already installed. Use 'lnb unalias %s' first to reinstall", aliasName, aliasName)
+			} else {
+				// Config says it's installed but file doesn't exist - clean up the config
+				fmt.Printf("Warning: Config shows '%s' as installed but target file '%s' doesn't exist. Cleaning up config entry.\n", aliasName, entry.TargetPath)
+				cfg.RemoveEntry(aliasName)
+				if err := cfg.Save(); err != nil {
+					fmt.Printf("Warning: failed to clean up config: %v\n", err)
+				}
+			}
 		}
 
 		// Check if the target path already exists
@@ -134,6 +165,17 @@ func (h *windowsHandler) HandleAlias(aliasName, command, action string) error {
 		}
 
 	case "remove":
+		// Check if this alias was installed by LNB
+		entry, exists := cfg.GetEntry(aliasName)
+		if !exists {
+			return fmt.Errorf("alias '%s' was not installed by LNB", aliasName)
+		}
+
+		// Verify the target path matches what we expect
+		if entry.TargetPath != batPath {
+			return fmt.Errorf("alias '%s' target path mismatch: expected %s, found %s", aliasName, batPath, entry.TargetPath)
+		}
+
 		err := os.Remove(batPath)
 		if err != nil {
 			return fmt.Errorf("failed to remove alias: %v", err)
