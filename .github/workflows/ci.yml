@@ -1,24 +1,23 @@
-name: Release
+# This workflow will build and test LNB across different platforms
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests
+
+name: Go CI
 
 on:
   push:
-    tags:
-      - 'v*'
-  workflow_dispatch:
+    branches: ['main']
+    tags: ['*']
+  pull_request:
+    branches: ['main']
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: write
-  packages: write
-
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
     environment: dev
-    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,15 +29,6 @@ jobs:
         with:
           go-version-file: go.mod
           cache: true
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install goreleaser-npm-publisher
-        run: npm install -g @muthuishere/goreleaser-npm-publisher
 
       - name: Install Task
         uses: arduino/setup-task@v2
@@ -53,11 +43,23 @@ jobs:
           version: '~> v2'
           install-only: true
 
-      - name: Run release
-        run: task publish
-        env:
-          GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Lint code
+        run: |
+          go fmt ./...
+          go vet ./...
 
+      - name: Build code
+        run: task build:all
 
+      - name: Test code
+        run: task test:all
 
+      - uses: actions/cache@v4
+        id: build-cache
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          path: |
+            ./dist
+            ./go.mod
+            ./go.sum
+          key: ${{ github.sha }}

@@ -6,7 +6,7 @@ You build tools. Scripts. Binaries. Commands you want to run from anywhere.
 
 But every platform has different rules:
 
-- **Mac/Linux**: Edit `.bashrc`, source it, hope it works across shells
+- **Mac/Linux**: Edit `.bashrc` or `.zshrc`, source it, hope it works across shells
 - **Windows**: Create `.bat` files, mess with PATH, pray PowerShell finds them
 
 You waste time on platform differences instead of building things.
