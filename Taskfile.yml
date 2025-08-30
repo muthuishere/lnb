@@ -108,6 +108,7 @@ tasks:
         echo "✅ Commits and tag pushed!"
         echo ""
         echo "🚀 GitHub Actions will automatically trigger the release workflow"
+        git checkout main
 
   setup:npm-publisher:
     desc: Install goreleaser-npm-publisher globally

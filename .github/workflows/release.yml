@@ -55,14 +55,10 @@ jobs:
       - name: Run tests
         run: task test:all
 
-      - name: Run release
-        run: task release
+      - name: Run Publish
+        run: task publish
         env:
           GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}
-
-      - name: Publish to NPM
-        run: goreleaser-npm-publisher publish --clean --token ${{ secrets.NPM_TOKEN }}
-        env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
 
