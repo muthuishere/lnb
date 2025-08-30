@@ -3,6 +3,7 @@ package oshandler
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -64,7 +65,9 @@ func (h *windowsHandler) Handle(absPath, action string) error {
 			return fmt.Errorf("failed to write wrapper: %v", err)
 		}
 		fmt.Printf("Installed: %s\n", cmdPath)
-		fmt.Println("⚠️ Make sure", binDir, "is in your PATH")
+
+		// Automatically ensure the bin directory is in PATH
+		h.ensureInPath(binDir)
 
 		// Add to config
 		cfg.AddEntry(linkNameWithoutExt, absPath, cmdPath)
@@ -156,7 +159,9 @@ func (h *windowsHandler) HandleAlias(aliasName, command, action string) error {
 		}
 
 		fmt.Printf("Created alias: %s -> %s\n", aliasName, convertedCommand)
-		fmt.Println("⚠️ Make sure", binDir, "is in your PATH")
+
+		// Automatically ensure the bin directory is in PATH
+		h.ensureInPath(binDir)
 
 		// Add to config with special marker for aliases
 		cfg.AddEntry(aliasName, "alias:"+command, batPath)
@@ -241,4 +246,46 @@ func (h *windowsHandler) validateCommand(command string) error {
 	}
 
 	return nil
+}
+
+// isInUserPath checks if the given directory is in the user's PATH
+func (h *windowsHandler) isInUserPath(dir string) bool {
+	cmd := exec.Command("powershell", "-Command",
+		"[Environment]::GetEnvironmentVariable('Path', 'User') -split ';' | Where-Object { $_ -eq '"+dir+"' }")
+	output, err := cmd.Output()
+	return err == nil && len(strings.TrimSpace(string(output))) > 0
+}
+
+// addToUserPath adds a directory to the user's PATH environment variable
+func (h *windowsHandler) addToUserPath(dir string) error {
+	// Use PowerShell to add to user PATH
+	cmd := exec.Command("powershell", "-Command",
+		"$currentPath = [Environment]::GetEnvironmentVariable('Path', 'User'); "+
+			"if ($currentPath -notlike '*"+dir+"*') { "+
+			"$newPath = if ($currentPath) { $currentPath + ';' + '"+dir+"' } else { '"+dir+"' }; "+
+			"[Environment]::SetEnvironmentVariable('Path', $newPath, 'User'); "+
+			"Write-Host 'Added to PATH' } else { Write-Host 'Already in PATH' }")
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("failed to add directory to PATH: %v\nOutput: %s", err, string(output))
+	}
+
+	fmt.Printf("🔧 %s\n", strings.TrimSpace(string(output)))
+	return nil
+}
+
+// ensureInPath ensures the bin directory is in the user's PATH
+func (h *windowsHandler) ensureInPath(binDir string) {
+	if !h.isInUserPath(binDir) {
+		fmt.Printf("📍 Adding %s to your PATH...\n", binDir)
+		if err := h.addToUserPath(binDir); err != nil {
+			fmt.Printf("⚠️  Failed to automatically add to PATH: %v\n", err)
+			fmt.Printf("⚠️  Please manually add %s to your PATH environment variable\n", binDir)
+		} else {
+			fmt.Println("✅ Successfully added to PATH! Restart your terminal to use the new PATH.")
+		}
+	} else {
+		fmt.Printf("✅ %s is already in your PATH\n", binDir)
+	}
 }
