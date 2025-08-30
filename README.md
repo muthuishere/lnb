@@ -1,86 +1,97 @@
-# LNB – Cross-Platform Alias Manager
+# LNB – Cross-Platform Command Manager
 
-*"The best software is written to solve problems the author actually has."* — DHH
+## The Problem
 
-I got tired of doing different things on every platform for simple commands:
+You build tools. Scripts. Binaries. Commands you want to run from anywhere.
 
-**Unix/Mac:**
-```bash
-echo 'alias deploy="docker run --rm -v $(pwd):/app deploy"' >> ~/.zshrc  
-source ~/.zshrc
-```
+But every platform has different rules:
 
-**Windows:**
-```powershell
-# Create .bat files manually? 
-# Edit PowerShell profile? 
-# Add to System PATH?
-# Good luck remembering how.
-```
+- **Mac/Linux**: Edit `.bashrc`, source it, hope it works across shells
+- **Windows**: Create `.bat` files, mess with PATH, pray PowerShell finds them
 
-Different rules. Different commands. Different headaches.
+You waste time on platform differences instead of building things.
 
-I wanted one command that works everywhere. So I built it.
+## The Solution
 
-## Installation
+One command. All platforms. No configuration.
 
 ```bash
 npm install -g lnb
 ```
 
+## Why You Need This
+
+**Stop typing long commands:**
+```bash
+# Instead of this every time:
+docker run --rm -v $(pwd):/workspace -w /workspace node:18 npm run build
+
+# Do this once:
+lnb alias build "docker run --rm -v $(pwd):/workspace -w /workspace node:18 npm run build"
+
+# Then just:
+build
+```
+
+**Make your tools globally available:**
+```bash
+# You built a great tool, but it only works from its directory
+./my-awesome-tool --help
+
+# Make it work from anywhere:
+lnb ./my-awesome-tool
+
+# Now this works from any directory:
+my-awesome-tool --help
+```
+
+**Share commands across your team:**
+```bash
+# Everyone can run the same commands, same way, all platforms:
+lnb alias deploy "docker-compose -f prod.yml up -d"
+lnb alias logs "kubectl logs -f deployment/app"
+lnb alias test "npm test -- --coverage"
+```
+
 ## Usage
 
-**Create shortcuts that work from anywhere:**
+**Create shortcuts:**
 ```bash
-# Now you can run 'deploy' from any terminal or Start menu search (Windows)
-lnb alias deploy "docker run --rm -v $(pwd):/app deploy-image"
-
-# Run 'logs' from anywhere - terminal, Run dialog (Win+R), or Start menu
-lnb alias logs "tail -f /var/log/nginx/access.log"  
-
-# Type 'serve' in any terminal or Windows Start bar search
+lnb alias deploy "docker-compose up -d"
 lnb alias serve "python -m http.server 8080"
+lnb alias logs "tail -f /var/log/app.log"
 ```
 
-**Make a binary globally accessible:**
+**Make binaries global:**
 ```bash
-# Now 'mybinary' works from anywhere - any terminal or Windows Start menu
-lnb ./mybinary
+lnb ./mybinary          # Now 'mybinary' works everywhere
+lnb ~/tools/deploy.sh   # Now 'deploy.sh' works everywhere
 ```
 
-**List everything:**
+**Manage everything:**
 ```bash
-lnb list
+lnb list                # See what you've installed
+lnb remove mybinary     # Remove a binary
+lnb unalias deploy      # Remove an alias
 ```
 
-**Remove stuff:**
-```bash
-lnb remove mybinary
-lnb unalias deploy
-```
+## How It Works
 
-## How it works
+Same command. All platforms. Zero configuration.
 
-**Same command. All platforms.**
+Your commands work everywhere:
+- ✅ Any terminal
+- ✅ Windows Start menu search  
+- ✅ Command prompt, PowerShell, Bash
+- ✅ Anywhere you'd normally type commands
 
-- **Unix/Mac**: Creates shell scripts in `/usr/local/bin`
-- **Windows**: Creates .bat/.cmd files in `%USERPROFILE%\bin` and adds to your PATH automatically
+LNB handles the platform differences so you don't have to.
 
-You don't need to know or care about these details.
+## That's It
 
-After installation, your commands work from:
-- ✅ **Any terminal** (PowerShell, Command Prompt, Bash, etc.)
-- ✅ **Windows Start menu search** (just type the command name)
-- ✅ **Run dialog** (Win+R on Windows)
-- ✅ **Anywhere you'd normally type commands**
+LNB does one thing: makes your commands and tools globally available.
 
-## That's it
-
-LNB does one thing: manages aliases and binaries consistently across platforms.
-
-No configuration files. No plugins. No complexity.
-
-It just works.
+No config files. No learning curve. It just works.
 
 ---
 
