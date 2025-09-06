@@ -119,7 +119,7 @@ tasks:
         fi
 
   publish:
-    desc: Publish to GitHub and NPM (used by both local and CI)
+    desc: Publish to GitHub  NPM (used by both local and CI)
     deps: [build:all, setup:npm-publisher]
     cmds:
       - |
