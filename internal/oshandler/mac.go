@@ -345,17 +345,43 @@ func (h *macHandler) validateCommand(command string) error {
 		// 1. A path with spaces (like "/Applications/Visual Studio Code.app/bin/code")
 		// 2. A command with arguments (like "java -jar file.jar" or "./script.js arg1 arg2")
 		//
-		// Strategy: Always take the first word for validation, but only if it looks like a path
-		// treat the whole thing as a path
-		parts := strings.Fields(inner)
-		if len(parts) > 0 {
-			firstWord := parts[0]
-			// If the first word is an absolute path or starts with ./ or ../,
-			// and there are no additional arguments, treat it as a full path
-			if (strings.HasPrefix(firstWord, "/") || strings.HasPrefix(firstWord, "./") || strings.HasPrefix(firstWord, "../")) && len(parts) == 1 {
-				cmdPath = inner // Full path with no arguments
+		// Strategy:
+		// - If it starts with / and doesn't look like "command args", treat as full path
+		// - If it starts with ./ or ../ and doesn't look like "script.ext args", treat as full path
+		// - Otherwise, take the first word as the command
+
+		if strings.HasPrefix(inner, "/") {
+			// Absolute path - check if it looks like a command with arguments
+			parts := strings.Fields(inner)
+			if len(parts) == 1 {
+				cmdPath = inner // Single absolute path
 			} else {
-				cmdPath = firstWord // Just the command/executable part
+				// Multiple parts - could be "/usr/bin/java -jar app.jar" or "/Applications/Visual Studio Code.app"
+				// If the first part doesn't end with a typical executable extension, assume it's a path with spaces
+				firstWord := parts[0]
+				if strings.HasSuffix(firstWord, ".app") ||
+					(!strings.Contains(firstWord, ".") && !strings.HasSuffix(firstWord, "/bin/java") && !strings.HasSuffix(firstWord, "/bin/node")) {
+					cmdPath = inner // Treat whole thing as path (like "/Applications/Visual Studio Code.app")
+				} else {
+					cmdPath = firstWord // Treat as command with args (like "/usr/bin/java -jar app.jar")
+				}
+			}
+		} else if strings.HasPrefix(inner, "./") || strings.HasPrefix(inner, "../") {
+			// Relative path - check if it has arguments
+			parts := strings.Fields(inner)
+			firstWord := parts[0]
+			if len(parts) == 1 {
+				cmdPath = inner // Single relative path
+			} else if strings.Contains(firstWord, ".") {
+				cmdPath = firstWord // Relative script with args (like "./script.js args")
+			} else {
+				cmdPath = inner // Relative path with spaces
+			}
+		} else {
+			// Not a path, treat as command with arguments
+			parts := strings.Fields(inner)
+			if len(parts) > 0 {
+				cmdPath = parts[0]
 			}
 		}
 	} else {
