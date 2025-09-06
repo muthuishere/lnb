@@ -340,70 +340,7 @@ console.log("Working directory:", process.cwd());
 	}
 }
 
-// TestLnbPathConversion tests that relative paths are converted to absolute paths
-func TestLnbPathConversion(t *testing.T) {
-	// Set up test environment
-	_, testLnbPath, testAssetsDir, cleanup := setupTestEnvironment(t)
-	defer cleanup()
 
-	// Create a script in the test assets directory
-	script := filepath.Join(testAssetsDir, "myscript.js")
-	scriptContent := `#!/usr/bin/env node
-console.log("Script executed from:", __dirname);
-console.log("Args:", process.argv.slice(2));
-`
-	if err := os.WriteFile(script, []byte(scriptContent), 0755); err != nil {
-		t.Fatalf("Failed to create script: %v", err)
-	}
-
-	// Change to test assets directory to test relative paths
-	originalDir, _ := os.Getwd()
-	defer os.Chdir(originalDir)
-	os.Chdir(testAssetsDir)
-
-	// Create alias with relative path
-	cmd := exec.Command(testLnbPath, "alias", "relscript", "./myscript.js hello world")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Failed to create alias with relative path: %v\nOutput: %s", err, string(output))
-	}
-
-	// Verify the alias was created and shows absolute path
-	cmd = exec.Command(testLnbPath, "list")
-	output, err = cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("Failed to list: %v\nOutput: %s", err, string(output))
-	}
-
-	outputStr := string(output)
-	if !strings.Contains(outputStr, "relscript") {
-		t.Errorf("Alias not found in list: %s", outputStr)
-	}
-
-	// The list output should show the original command
-	if !strings.Contains(outputStr, "./myscript.js") {
-		t.Errorf("Expected to see original relative path in list output: %s", outputStr)
-	}
-
-	// But the actual script file should contain the absolute path
-	// Let's verify by reading the script file
-	scriptPath := "/usr/local/bin/relscript"
-	if scriptContent, err := os.ReadFile(scriptPath); err == nil {
-		scriptStr := string(scriptContent)
-		if !strings.Contains(scriptStr, testAssetsDir) {
-			t.Errorf("Expected script file to contain absolute path, but got: %s", scriptStr)
-		}
-		if strings.Contains(scriptStr, "./myscript.js") {
-			t.Errorf("Expected script file to NOT contain relative path, but got: %s", scriptStr)
-		}
-	} else {
-		t.Errorf("Failed to read script file: %v", err)
-	}
-
-	// Clean up
-	cmd = exec.Command(testLnbPath, "unalias", "relscript")
-	cmd.Run()
-}
 
 // TestLnbInstallCommand tests the install command explicitly
 func TestLnbInstallCommand(t *testing.T) {

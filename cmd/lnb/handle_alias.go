@@ -173,15 +173,15 @@ func displayEntries(entries map[string]*LNBEntry) {
 	fmt.Printf("Binaries and aliases installed by LNB (%d):\n\n", len(entries))
 	for _, entry := range entries {
 		fmt.Printf("  %s\n", entry.Name)
-		if entry.Type == "alias" {
+		if strings.HasPrefix(entry.SourcePath, "alias:") {
 			fmt.Printf("    Type:      alias\n")
-			fmt.Printf("    Command:   %s\n", entry.Command)
+			fmt.Printf("    Command:   %s\n", strings.TrimPrefix(entry.SourcePath, "alias:"))
 		} else {
 			fmt.Printf("    Type:      binary\n")
-			fmt.Printf("    Source:    %s\n", entry.Source)
+			fmt.Printf("    Source:    %s\n", entry.SourcePath)
 		}
-		fmt.Printf("    Target:    %s\n", entry.Target)
-		fmt.Printf("    Installed: %s\n", entry.Installed.Format("2006-01-02 15:04:05"))
+		fmt.Printf("    Target:    %s\n", entry.TargetPath)
+		fmt.Printf("    Installed: %s\n", entry.InstalledAt.Format("2006-01-02 15:04:05"))
 		fmt.Println()
 	}
 }

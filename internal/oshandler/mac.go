@@ -338,7 +338,26 @@ func (h *macHandler) validateCommand(command string) error {
 	trimmed := strings.TrimSpace(command)
 	if (strings.HasPrefix(trimmed, `"`) && strings.HasSuffix(trimmed, `"`)) ||
 		(strings.HasPrefix(trimmed, `'`) && strings.HasSuffix(trimmed, `'`)) {
-		cmdPath = trimmed[1 : len(trimmed)-1]
+		// Extract content inside quotes
+		inner := trimmed[1 : len(trimmed)-1]
+
+		// If the quoted content contains spaces, it could be either:
+		// 1. A path with spaces (like "/Applications/Visual Studio Code.app/bin/code")
+		// 2. A command with arguments (like "java -jar file.jar" or "./script.js arg1 arg2")
+		//
+		// Strategy: Always take the first word for validation, but only if it looks like a path
+		// treat the whole thing as a path
+		parts := strings.Fields(inner)
+		if len(parts) > 0 {
+			firstWord := parts[0]
+			// If the first word is an absolute path or starts with ./ or ../,
+			// and there are no additional arguments, treat it as a full path
+			if (strings.HasPrefix(firstWord, "/") || strings.HasPrefix(firstWord, "./") || strings.HasPrefix(firstWord, "../")) && len(parts) == 1 {
+				cmdPath = inner // Full path with no arguments
+			} else {
+				cmdPath = firstWord // Just the command/executable part
+			}
+		}
 	} else {
 		// For unquoted commands, take the first word
 		parts := strings.Fields(trimmed)
@@ -351,7 +370,7 @@ func (h *macHandler) validateCommand(command string) error {
 		return fmt.Errorf("could not determine command path")
 	}
 
-	// If it's a path, check if it exists
+	// If it's a path (contains / or starts with ./ or ../), check if it exists
 	if strings.Contains(cmdPath, "/") {
 		if !filepath.IsAbs(cmdPath) {
 			if absPath, err := filepath.Abs(cmdPath); err == nil {
@@ -372,6 +391,13 @@ func (h *macHandler) validateCommand(command string) error {
 		// If it's a regular file, check if it's executable
 		if fileInfo, err := os.Stat(cmdPath); err == nil && fileInfo.Mode().IsRegular() {
 			return h.checkExecutable(cmdPath)
+		}
+	} else {
+		// For commands without paths (like 'java', 'node', etc.), assume they're in PATH
+		// We don't validate PATH commands as they may not be available during testing
+		// or the user might install them later
+		if strings.ContainsAny(cmdPath, "{}[]()<>|&;") {
+			return fmt.Errorf("command '%s' contains invalid characters", cmdPath)
 		}
 	}
 
