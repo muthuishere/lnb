@@ -2,3 +2,5 @@
 .idea
 dist
 marketing
+lnb
+debug_test.go

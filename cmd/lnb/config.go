@@ -25,13 +25,20 @@ type LNBConfig struct {
 
 // getConfigPath returns the path to the LNB configuration file
 func getConfigPath() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		fmt.Printf("Error: Unable to get home directory: %v\n", err)
-		os.Exit(1)
+	var configDir string
+
+	// Check if we're in test mode
+	if testConfigDir := os.Getenv("LNB_TEST_CONFIG_DIR"); testConfigDir != "" {
+		configDir = testConfigDir
+	} else {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Printf("Error: Unable to get home directory: %v\n", err)
+			os.Exit(1)
+		}
+		configDir = filepath.Join(homeDir, ".lnb")
 	}
 
-	configDir := filepath.Join(homeDir, ".lnb")
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		fmt.Printf("Error: Unable to create config directory: %v\n", err)
 		os.Exit(1)

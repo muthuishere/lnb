@@ -284,54 +284,11 @@ func (h *windowsHandler) convertRelativePaths(command string) string {
 	return reconstructCommandWindows(args)
 }
 
-// validateCommand checks if the command can be executed (basic validation)
+// validateCommand does basic validation since path resolution is handled by main handler
 func (h *windowsHandler) validateCommand(command string) error {
 	if strings.TrimSpace(command) == "" {
 		return fmt.Errorf("empty command")
 	}
-
-	// Parse the command properly respecting quotes
-	args := parseShellArgsWindows(command)
-	if len(args) == 0 {
-		return fmt.Errorf("could not parse command")
-	}
-
-	// Get the first argument (the command/executable)
-	cmdName := args[0]
-
-	// Remove quotes if present to check the actual path
-	if (strings.HasPrefix(cmdName, `"`) && strings.HasSuffix(cmdName, `"`)) ||
-		(strings.HasPrefix(cmdName, `'`) && strings.HasSuffix(cmdName, `'`)) {
-		cmdName = cmdName[1 : len(cmdName)-1]
-	}
-
-	// If it's a path (absolute or relative), check if it exists
-	if strings.Contains(cmdName, "/") || strings.Contains(cmdName, "\\") {
-		var absPath string
-		var err error
-
-		if filepath.IsAbs(cmdName) {
-			absPath = cmdName
-		} else {
-			absPath, err = filepath.Abs(cmdName)
-			if err != nil {
-				return fmt.Errorf("could not resolve path '%s': %v", cmdName, err)
-			}
-		}
-
-		// Check if the path exists
-		if _, err := os.Stat(absPath); err != nil {
-			return fmt.Errorf("command '%s' not found", cmdName)
-		}
-
-		return nil
-	} else {
-		// For commands in PATH, do basic validation
-		if strings.ContainsAny(cmdName, "{}[]()<>|&;") {
-			return fmt.Errorf("command '%s' contains invalid characters", cmdName)
-		}
-	}
-
 	return nil
 }
 

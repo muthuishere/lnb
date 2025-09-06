@@ -24,12 +24,19 @@ type Config struct {
 
 // GetConfigPath returns the path to the config file
 func GetConfigPath() (string, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "", fmt.Errorf("failed to get user home directory: %v", err)
+	var configDir string
+
+	// Check if we're in test mode
+	if testConfigDir := os.Getenv("LNB_TEST_CONFIG_DIR"); testConfigDir != "" {
+		configDir = testConfigDir
+	} else {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("failed to get user home directory: %v", err)
+		}
+		configDir = filepath.Join(homeDir, ".lnb")
 	}
 
-	configDir := filepath.Join(homeDir, ".lnb")
 	configFile := filepath.Join(configDir, "config.json")
 
 	// Ensure the config directory exists

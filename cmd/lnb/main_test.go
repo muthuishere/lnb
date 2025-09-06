@@ -54,6 +54,26 @@ func setupTestEnvironment(t *testing.T) (projectRoot, testLnbPath, testAssetsDir
 	testLnbPath = filepath.Join(root, "dist", "test-lnb")
 	testAssetsDir = filepath.Join(root, "dist", "testassets")
 
+	// Create a temporary directory for test installations
+	tempInstallDir, err := os.MkdirTemp("", "lnb-test-install-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp install directory: %v", err)
+	}
+
+	// Set environment variable to override the installation directory
+	originalInstallDir := os.Getenv("LNB_TEST_INSTALL_DIR")
+	os.Setenv("LNB_TEST_INSTALL_DIR", tempInstallDir)
+
+	// Create a temporary directory for test config
+	tempConfigDir, err := os.MkdirTemp("", "lnb-test-config-*")
+	if err != nil {
+		t.Fatalf("Failed to create temp config directory: %v", err)
+	}
+
+	// Set environment variable to override the config directory
+	originalConfigDir := os.Getenv("LNB_TEST_CONFIG_DIR")
+	os.Setenv("LNB_TEST_CONFIG_DIR", tempConfigDir)
+
 	// Check if test-lnb binary exists, if not build it
 	if _, err := os.Stat(testLnbPath); os.IsNotExist(err) {
 		t.Logf("test-lnb binary not found at %s, building it...", testLnbPath)
@@ -81,6 +101,19 @@ func setupTestEnvironment(t *testing.T) (projectRoot, testLnbPath, testAssetsDir
 	// Return cleanup function
 	cleanup = func() {
 		os.RemoveAll(testAssetsDir)
+		os.RemoveAll(tempInstallDir)
+		os.RemoveAll(tempConfigDir)
+		// Restore original environment variables
+		if originalInstallDir == "" {
+			os.Unsetenv("LNB_TEST_INSTALL_DIR")
+		} else {
+			os.Setenv("LNB_TEST_INSTALL_DIR", originalInstallDir)
+		}
+		if originalConfigDir == "" {
+			os.Unsetenv("LNB_TEST_CONFIG_DIR")
+		} else {
+			os.Setenv("LNB_TEST_CONFIG_DIR", originalConfigDir)
+		}
 		cleanupConfig()
 	}
 
@@ -340,8 +373,6 @@ console.log("Working directory:", process.cwd());
 	}
 }
 
-
-
 // TestLnbInstallCommand tests the install command explicitly
 func TestLnbInstallCommand(t *testing.T) {
 	// Set up test environment
@@ -491,4 +522,213 @@ func TestLnbSmartInstall(t *testing.T) {
 			exec.Command(testLnbPath, "remove", "smartbinary").Run()
 		})
 	}
+}
+
+// TestLnbPathsWithSpaces tests handling of files and commands with spaces in their paths
+func TestLnbPathsWithSpaces(t *testing.T) {
+	// Set up test environment
+	_, testLnbPath, testAssetsDir, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	// Clean up any existing config
+	cleanupConfig()
+
+	// Create a directory and file with spaces in the name
+	spacedDir := filepath.Join(testAssetsDir, "spaced dir")
+	if err := os.MkdirAll(spacedDir, 0755); err != nil {
+		t.Fatalf("Failed to create spaced directory: %v", err)
+	}
+
+	spacedBinary := filepath.Join(spacedDir, "spaced binary")
+	spacedJarFile := filepath.Join(spacedDir, "my app.jar")
+
+	// Create executable with space in path
+	if err := os.WriteFile(spacedBinary, []byte(testBinaryContent), 0755); err != nil {
+		t.Fatalf("Failed to create spaced binary: %v", err)
+	}
+
+	// Create fake jar file with space in name
+	if err := os.WriteFile(spacedJarFile, []byte(testJavaAppContent), 0755); err != nil {
+		t.Fatalf("Failed to create spaced jar file: %v", err)
+	}
+
+	testCases := []struct {
+		name      string
+		args      []string
+		wantErr   bool
+		contains  string
+		cleanupFn func()
+	}{
+		{
+			name:     "install_binary_with_spaced_path",
+			args:     []string{"install", spacedBinary},
+			wantErr:  false,
+			contains: "Successfully installed",
+			cleanupFn: func() {
+				exec.Command(testLnbPath, "remove", "spaced binary").Run()
+			},
+		},
+		{
+			name:     "create_alias_with_quoted_java_command",
+			args:     []string{"alias", "myspacedapp", fmt.Sprintf(`java -jar "%s"`, spacedJarFile)},
+			wantErr:  false,
+			contains: "Created alias: myspacedapp",
+			cleanupFn: func() {
+				exec.Command(testLnbPath, "unalias", "myspacedapp").Run()
+			},
+		},
+		{
+			name:     "create_alias_with_unquoted_java_command_should_work",
+			args:     []string{"alias", "myspacedapp2", fmt.Sprintf("java -jar %s", spacedJarFile)},
+			wantErr:  false, // Should work as our validation handles spaces properly
+			contains: "Created alias: myspacedapp2",
+			cleanupFn: func() {
+				exec.Command(testLnbPath, "unalias", "myspacedapp2").Run()
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := exec.Command(testLnbPath, tc.args...)
+			output, err := cmd.CombinedOutput()
+			outputStr := string(output)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("Expected error but got none. Output: %s", outputStr)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v. Output: %s", err, outputStr)
+				}
+			}
+
+			if !strings.Contains(outputStr, tc.contains) {
+				t.Errorf("Expected output to contain '%s', got: %s", tc.contains, outputStr)
+			}
+
+			t.Logf("%s - Command: %v\n\tOutput: %s", tc.name, tc.args, outputStr)
+
+			// Clean up after each test
+			if tc.cleanupFn != nil {
+				tc.cleanupFn()
+			}
+		})
+	}
+}
+
+// TestLnbMacAppHandling tests Mac-specific .app bundle handling
+func TestLnbMacAppHandling(t *testing.T) {
+	if runtime.GOOS != "darwin" {
+		t.Skip("Skipping Mac .app test on non-Mac platform")
+	}
+
+	// Set up test environment
+	_, testLnbPath, testAssetsDir, cleanup := setupTestEnvironment(t)
+	defer cleanup()
+
+	// Clean up any existing config and leftover files
+	cleanupConfig()
+
+	// Clean up any leftover .app files from previous test runs
+	exec.Command("rm", "-f", "/usr/local/bin/TestApp.app").Run()
+	exec.Command("rm", "-f", "/usr/local/bin/TestApp").Run()
+
+	// Create a fake .app bundle structure
+	appBundleDir := filepath.Join(testAssetsDir, "TestApp.app")
+	contentsDir := filepath.Join(appBundleDir, "Contents")
+	macOSDir := filepath.Join(contentsDir, "MacOS")
+
+	if err := os.MkdirAll(macOSDir, 0755); err != nil {
+		t.Fatalf("Failed to create .app bundle structure: %v", err)
+	}
+
+	// Create executable inside the bundle
+	executablePath := filepath.Join(macOSDir, "TestApp")
+	if err := os.WriteFile(executablePath, []byte(testBinaryContent), 0755); err != nil {
+		t.Fatalf("Failed to create app executable: %v", err)
+	}
+
+	// Create Info.plist
+	infoPlistContent := `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>TestApp</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.test.testapp</string>
+</dict>
+</plist>`
+	infoPlistPath := filepath.Join(contentsDir, "Info.plist")
+	if err := os.WriteFile(infoPlistPath, []byte(infoPlistContent), 0644); err != nil {
+		t.Fatalf("Failed to create Info.plist: %v", err)
+	}
+
+	testCases := []struct {
+		name      string
+		args      []string
+		wantErr   bool
+		contains  string
+		cleanupFn func()
+	}{
+		{
+			name:     "install_app_bundle",
+			args:     []string{"install", appBundleDir},
+			wantErr:  false,
+			contains: "Successfully installed",
+			cleanupFn: func() {
+				exec.Command(testLnbPath, "remove", "TestApp").Run()
+			},
+		},
+		{
+			name:     "create_alias_with_open_command",
+			args:     []string{"alias", "testapp", fmt.Sprintf("open -a %s", appBundleDir)},
+			wantErr:  false,
+			contains: "Created alias: testapp",
+			cleanupFn: func() {
+				exec.Command(testLnbPath, "unalias", "testapp").Run()
+			},
+		},
+		{
+			name:     "create_alias_with_quoted_open_command",
+			args:     []string{"alias", "testapp2", fmt.Sprintf(`open -a "%s"`, appBundleDir)},
+			wantErr:  false,
+			contains: "Created alias: testapp2",
+			cleanupFn: func() {
+				exec.Command(testLnbPath, "unalias", "testapp2").Run()
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			cmd := exec.Command(testLnbPath, tc.args...)
+			output, err := cmd.CombinedOutput()
+			outputStr := string(output)
+
+			if tc.wantErr {
+				if err == nil {
+					t.Errorf("Expected error but got none. Output: %s", outputStr)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error but got: %v. Output: %s", err, outputStr)
+				}
+			}
+
+			if !strings.Contains(outputStr, tc.contains) {
+				t.Errorf("Expected output to contain '%s', got: %s", tc.contains, outputStr)
+			}
+
+			t.Logf("%s - Command: %v\n\tOutput: %s", tc.name, tc.args, outputStr)
+
+			// Clean up after each test
+			if tc.cleanupFn != nil {
+				tc.cleanupFn()
+			}
+		})
+	}
+
 }
