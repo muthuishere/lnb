@@ -15,10 +15,9 @@ permissions:
   packages: write
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  goreleaser:
+    runs-on: ubuntu-latest  # Back to Ubuntu since we're using NPM instead of Chocolatey
     environment: dev
-    if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -53,7 +52,10 @@ jobs:
           version: '~> v2'
           install-only: true
 
-      - name: Run release
+      - name: Run tests
+        run: task test:all
+
+      - name: Run publish
         run: task publish
         env:
           GORELEASER_GITHUB_TOKEN: ${{ secrets.GORELEASER_GITHUB_TOKEN }}

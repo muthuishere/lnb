@@ -70,8 +70,6 @@ tasks:
     cmds:
       - task: build
       - ./dist/{{.BIN_NAME}} ./dist/{{.BIN_NAME}} remove
-      - rm -rf /usr/local/bin/lnb
-
 
   # GoReleaser commands
   check:
@@ -108,7 +106,6 @@ tasks:
         echo "✅ Commits and tag pushed!"
         echo ""
         echo "🚀 GitHub Actions will automatically trigger the release workflow"
-        git checkout main
 
   setup:npm-publisher:
     desc: Install goreleaser-npm-publisher globally
@@ -127,48 +124,6 @@ tasks:
     cmds:
       - |
         echo "🚀 Running release with GoReleaser..."
-        export GITHUB_TOKEN="{{.GORELEASER_GITHUB_TOKEN}}"
-        goreleaser release --clean
-      - |
-        echo "📦 Building NPM package..."
-        goreleaser-npm-publisher build
-      - |
-        echo "📦 Publishing to NPM..."
-        goreleaser-npm-publisher publish --clean --token {{.NPM_TOKEN}}
-
-  publish-local:
-    desc: Publish locally with proper git tag alignment
-    deps: [build:all, setup:npm-publisher]
-    cmds:
-      - |
-        echo "🏷️  Preparing local release for version {{.RELEASE_VERSION}}..."
-        
-        # Ensure we're on main and up to date
-        echo "📍 Ensuring clean git state..."
-        git checkout main
-        
-        # Check if tag exists locally, if not create it
-        if ! git rev-parse "v{{.RELEASE_VERSION}}" >/dev/null 2>&1; then
-          echo "🔖 Creating local tag v{{.RELEASE_VERSION}} for current commit..."
-          git tag v{{.RELEASE_VERSION}}
-        else
-          echo "🔖 Tag v{{.RELEASE_VERSION}} already exists locally"
-          
-          # Check if current commit matches the tag
-          CURRENT_COMMIT=$(git rev-parse HEAD)
-          TAG_COMMIT=$(git rev-parse "v{{.RELEASE_VERSION}}")
-          
-          if [ "$CURRENT_COMMIT" != "$TAG_COMMIT" ]; then
-            echo "⚠️  Current commit ($CURRENT_COMMIT) doesn't match tag commit ($TAG_COMMIT)"
-            echo "🔄 Re-tagging current commit as v{{.RELEASE_VERSION}}..."
-            git tag -d v{{.RELEASE_VERSION}}
-            git tag v{{.RELEASE_VERSION}}
-          else
-            echo "✅ Current commit matches tag commit"
-          fi
-        fi
-        
-        echo "🚀 Running local release with GoReleaser..."
         export GITHUB_TOKEN="{{.GORELEASER_GITHUB_TOKEN}}"
         goreleaser release --clean
       - |

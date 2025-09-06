@@ -10,6 +10,53 @@ import (
 	"lnb/internal/config"
 )
 
+// parseShellArgsWindows parses a command string into arguments while respecting quotes
+func parseShellArgsWindows(command string) []string {
+	var args []string
+	var current strings.Builder
+	var inQuotes bool
+	var quoteChar rune
+
+	for _, char := range command {
+		switch char {
+		case '"', '\'':
+			if !inQuotes {
+				inQuotes = true
+				quoteChar = char
+				current.WriteRune(char) // Keep the quote in the argument
+			} else if char == quoteChar {
+				inQuotes = false
+				current.WriteRune(char) // Keep the closing quote
+				quoteChar = 0
+			} else {
+				current.WriteRune(char)
+			}
+		case ' ', '\t':
+			if inQuotes {
+				current.WriteRune(char)
+			} else {
+				if current.Len() > 0 {
+					args = append(args, current.String())
+					current.Reset()
+				}
+			}
+		default:
+			current.WriteRune(char)
+		}
+	}
+
+	if current.Len() > 0 {
+		args = append(args, current.String())
+	}
+
+	return args
+}
+
+// reconstructCommandWindows rebuilds a command string from parsed arguments
+func reconstructCommandWindows(args []string) string {
+	return strings.Join(args, " ")
+}
+
 type windowsHandler struct{}
 
 func (h *windowsHandler) Handle(absPath, action string) error {
@@ -198,48 +245,88 @@ func (h *windowsHandler) HandleAlias(aliasName, command, action string) error {
 
 // convertRelativePaths converts relative paths in command to absolute paths (Windows version)
 func (h *windowsHandler) convertRelativePaths(command string) string {
-	words := strings.Fields(command)
-	for i, word := range words {
+	args := parseShellArgsWindows(command)
+
+	for i, arg := range args {
+		// Remove quotes temporarily to check the path, but preserve them in the final result
+		unquotedArg := arg
+		hasQuotes := false
+		var quoteChar string
+
+		if (strings.HasPrefix(arg, `"`) && strings.HasSuffix(arg, `"`)) ||
+			(strings.HasPrefix(arg, `'`) && strings.HasSuffix(arg, `'`)) {
+			hasQuotes = true
+			quoteChar = string(arg[0])
+			unquotedArg = arg[1 : len(arg)-1]
+		}
+
 		// Check if this looks like a relative path
 		// On Windows, relative paths might start with .\ or ..\ or be just filenames
-		if strings.HasPrefix(word, ".\\") || strings.HasPrefix(word, "..\\") || strings.HasPrefix(word, "./") || strings.HasPrefix(word, "../") ||
-			(strings.Contains(word, ".") && !strings.Contains(word, ":") && !strings.Contains(word, "://")) {
-			if absPath, err := filepath.Abs(word); err == nil {
+		if strings.HasPrefix(unquotedArg, ".\\") || strings.HasPrefix(unquotedArg, "..\\") ||
+			strings.HasPrefix(unquotedArg, "./") || strings.HasPrefix(unquotedArg, "../") ||
+			(strings.Contains(unquotedArg, ".") && !strings.Contains(unquotedArg, ":") && !strings.Contains(unquotedArg, "://")) {
+			if absPath, err := filepath.Abs(unquotedArg); err == nil {
 				// Verify the file exists before converting
 				if _, err := os.Stat(absPath); err == nil {
-					// Convert to Windows path format with quotes if it contains spaces
-					if strings.Contains(absPath, " ") {
-						words[i] = fmt.Sprintf("\"%s\"", absPath)
+					// Always preserve quotes if they were there, or add them if path contains spaces
+					if hasQuotes {
+						args[i] = quoteChar + absPath + quoteChar
+					} else if strings.Contains(absPath, " ") {
+						args[i] = `"` + absPath + `"`
 					} else {
-						words[i] = absPath
+						args[i] = absPath
 					}
 				}
 			}
 		}
 	}
-	return strings.Join(words, " ")
+
+	return reconstructCommandWindows(args)
 }
 
 // validateCommand checks if the command can be executed (basic validation)
 func (h *windowsHandler) validateCommand(command string) error {
-	words := strings.Fields(command)
-	if len(words) == 0 {
+	if strings.TrimSpace(command) == "" {
 		return fmt.Errorf("empty command")
 	}
 
-	// Get the first word (the actual command)
-	cmdName := words[0]
+	// Parse the command properly respecting quotes
+	args := parseShellArgsWindows(command)
+	if len(args) == 0 {
+		return fmt.Errorf("could not parse command")
+	}
 
-	// If it's a relative or absolute path, check if it exists
+	// Get the first argument (the command/executable)
+	cmdName := args[0]
+
+	// Remove quotes if present to check the actual path
+	if (strings.HasPrefix(cmdName, `"`) && strings.HasSuffix(cmdName, `"`)) ||
+		(strings.HasPrefix(cmdName, `'`) && strings.HasSuffix(cmdName, `'`)) {
+		cmdName = cmdName[1 : len(cmdName)-1]
+	}
+
+	// If it's a path (absolute or relative), check if it exists
 	if strings.Contains(cmdName, "/") || strings.Contains(cmdName, "\\") {
-		if absPath, err := filepath.Abs(cmdName); err == nil {
-			if _, err := os.Stat(absPath); err != nil {
-				return fmt.Errorf("command '%s' not found", cmdName)
+		var absPath string
+		var err error
+
+		if filepath.IsAbs(cmdName) {
+			absPath = cmdName
+		} else {
+			absPath, err = filepath.Abs(cmdName)
+			if err != nil {
+				return fmt.Errorf("could not resolve path '%s': %v", cmdName, err)
 			}
 		}
+
+		// Check if the path exists
+		if _, err := os.Stat(absPath); err != nil {
+			return fmt.Errorf("command '%s' not found", cmdName)
+		}
+
+		return nil
 	} else {
 		// For commands in PATH, do basic validation
-		// Just verify it's not obviously wrong
 		if strings.ContainsAny(cmdName, "{}[]()<>|&;") {
 			return fmt.Errorf("command '%s' contains invalid characters", cmdName)
 		}

@@ -1,97 +1,73 @@
-# LNB – Cross-Platform Command Manager
+# LNB – Cross-Platform Alias Manager
 
-## The Problem
+*"The best software is written to solve problems the author actually has."* — DHH
 
-You build tools. Scripts. Binaries. Commands you want to run from anywhere.
+I got tired of doing different things on every platform for simple aliases:
 
-But every platform has different rules:
+**Unix:**
+```bash
+echo 'alias deploy="docker run --rm -v $(pwd):/app deploy"' >> ~/.zshrc  
+source ~/.zshrc
+```
 
-- **Mac/Linux**: Edit `.bashrc` or `.zshrc`, source it, hope it works across shells
-- **Windows**: Create `.bat` files, mess with PATH, pray PowerShell finds them
+**Windows:**
+```powershell
+# Create .bat files manually? 
+# Edit PowerShell profile? 
+# Good luck remembering where that is.
+```
 
-You waste time on platform differences instead of building things.
+Different rules. Different commands. Different headaches.
 
-## The Solution
+I wanted one command that works everywhere. So I built it.
 
-One command. All platforms. No configuration.
+## Installation
 
 ```bash
 npm install -g lnb
 ```
 
-## Why You Need This
-
-**Stop typing long commands:**
-```bash
-# Instead of this every time:
-docker run --rm -v $(pwd):/workspace -w /workspace node:18 npm run build
-
-# Do this once:
-lnb alias build "docker run --rm -v $(pwd):/workspace -w /workspace node:18 npm run build"
-
-# Then just:
-build
-```
-
-**Make your tools globally available:**
-```bash
-# You built a great tool, but it only works from its directory
-./my-awesome-tool --help
-
-# Make it work from anywhere:
-lnb ./my-awesome-tool
-
-# Now this works from any directory:
-my-awesome-tool --help
-```
-
-**Share commands across your team:**
-```bash
-# Everyone can run the same commands, same way, all platforms:
-lnb alias deploy "docker-compose -f prod.yml up -d"
-lnb alias logs "kubectl logs -f deployment/app"
-lnb alias test "npm test -- --coverage"
-```
-
 ## Usage
 
-**Create shortcuts:**
+**Create an alias:**
 ```bash
-lnb alias deploy "docker-compose up -d"
+lnb alias deploy "docker run --rm -v $(pwd):/app deploy-image"
+lnb alias logs "tail -f /var/log/nginx/access.log"
 lnb alias serve "python -m http.server 8080"
-lnb alias logs "tail -f /var/log/app.log"
 ```
 
-**Make binaries global:**
+**Make a binary globally accessible:**
 ```bash
-lnb ./mybinary          # Now 'mybinary' works everywhere
-lnb ~/tools/deploy.sh   # Now 'deploy.sh' works everywhere
+lnb ./mybinary
 ```
 
-**Manage everything:**
+**List everything:**
 ```bash
-lnb list                # See what you've installed
-lnb remove mybinary     # Remove a binary
-lnb unalias deploy      # Remove an alias
+lnb list
 ```
 
-## How It Works
+**Remove stuff:**
+```bash
+lnb remove mybinary
+lnb unalias deploy
+```
 
-Same command. All platforms. Zero configuration.
+## How it works
 
-Your commands work everywhere:
-- ✅ Any terminal
-- ✅ Windows Start menu search  
-- ✅ Command prompt, PowerShell, Bash
-- ✅ Anywhere you'd normally type commands
+**Same command. All platforms.**
 
-LNB handles the platform differences so you don't have to.
+- **Unix**: Creates shell scripts in `/usr/local/bin`
+- **Windows**: Creates .bat/.cmd files in `%USERPROFILE%\bin`
 
-## That's It
+You don't need to know or care about these details.
 
-LNB does one thing: makes your commands and tools globally available.
+## That's it
 
-No config files. No learning curve. It just works.
+LNB does one thing: manages aliases and binaries consistently across platforms.
+
+No configuration files. No plugins. No complexity.
+
+It just works.
 
 ---
 

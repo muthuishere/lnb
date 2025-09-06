@@ -9,6 +9,53 @@ import (
 	"lnb/internal/config"
 )
 
+// parseShellArgs parses a command string into arguments while respecting quotes
+func parseShellArgs(command string) []string {
+	var args []string
+	var current strings.Builder
+	var inQuotes bool
+	var quoteChar rune
+
+	for _, char := range command {
+		switch char {
+		case '"', '\'':
+			if !inQuotes {
+				inQuotes = true
+				quoteChar = char
+				current.WriteRune(char) // Keep the quote in the argument
+			} else if char == quoteChar {
+				inQuotes = false
+				current.WriteRune(char) // Keep the closing quote
+				quoteChar = 0
+			} else {
+				current.WriteRune(char)
+			}
+		case ' ', '\t':
+			if inQuotes {
+				current.WriteRune(char)
+			} else {
+				if current.Len() > 0 {
+					args = append(args, current.String())
+					current.Reset()
+				}
+			}
+		default:
+			current.WriteRune(char)
+		}
+	}
+
+	if current.Len() > 0 {
+		args = append(args, current.String())
+	}
+
+	return args
+}
+
+// reconstructCommand rebuilds a command string from parsed arguments
+func reconstructCommand(args []string) string {
+	return strings.Join(args, " ")
+}
+
 type macHandler struct{}
 
 func (h *macHandler) Handle(absPath, action string) error {
@@ -131,10 +178,13 @@ func (h *macHandler) HandleAlias(aliasName, command, action string) error {
 		// Convert relative paths to absolute paths in the command
 		convertedCommand := h.convertRelativePaths(command)
 
+		// Process .app bundles to use "open -a" automatically
+		processedCommand := h.processAppBundle(convertedCommand)
+
 		// Create the shell script content
 		scriptContent := fmt.Sprintf(`#!/bin/bash
 %s "$@"
-`, convertedCommand)
+`, processedCommand)
 
 		// Write the script file
 		err := os.WriteFile(scriptPath, []byte(scriptContent), 0755)
@@ -179,20 +229,82 @@ func (h *macHandler) HandleAlias(aliasName, command, action string) error {
 
 // convertRelativePaths converts relative paths in command to absolute paths
 func (h *macHandler) convertRelativePaths(command string) string {
-	words := strings.Fields(command)
-	for i, word := range words {
-		// Check if this looks like a relative path (contains ./ or ../ or just a filename with extension)
-		if strings.HasPrefix(word, "./") || strings.HasPrefix(word, "../") ||
-			(strings.Contains(word, ".") && !strings.HasPrefix(word, "/") && !strings.Contains(word, "://")) {
-			if absPath, err := filepath.Abs(word); err == nil {
-				// Verify the file exists before converting
-				if _, err := os.Stat(absPath); err == nil {
-					words[i] = absPath
-				}
+	// Since quotes are now handled at the top level, we can work with the command as-is
+	// If the command is quoted, preserve the quotes but convert the path inside
+
+	trimmed := strings.TrimSpace(command)
+	if (strings.HasPrefix(trimmed, `"`) && strings.HasSuffix(trimmed, `"`)) ||
+		(strings.HasPrefix(trimmed, `'`) && strings.HasSuffix(trimmed, `'`)) {
+		// Extract the quoted content
+		quoteChar := string(trimmed[0])
+		inner := trimmed[1 : len(trimmed)-1]
+
+		// Convert relative paths in the quoted content
+		converted := h.convertPathIfRelative(inner)
+
+		// Return with quotes preserved
+		return quoteChar + converted + quoteChar
+	}
+
+	// For unquoted commands, convert the first word if it's a relative path
+	parts := strings.Fields(trimmed)
+	if len(parts) > 0 {
+		parts[0] = h.convertPathIfRelative(parts[0])
+	}
+
+	return strings.Join(parts, " ")
+}
+
+// convertPathIfRelative converts a single path if it's relative
+func (h *macHandler) convertPathIfRelative(path string) string {
+	if strings.HasPrefix(path, "./") || strings.HasPrefix(path, "../") ||
+		(strings.Contains(path, ".") && !strings.HasPrefix(path, "/") && !strings.Contains(path, "://")) {
+		if absPath, err := filepath.Abs(path); err == nil {
+			// Verify the file exists before converting
+			if _, err := os.Stat(absPath); err == nil {
+				return absPath
 			}
 		}
 	}
-	return strings.Join(words, " ")
+	return path
+}
+
+// processAppBundle automatically wraps .app bundles with "open -a"
+func (h *macHandler) processAppBundle(command string) string {
+	trimmed := strings.TrimSpace(command)
+
+	// Handle quoted commands
+	if (strings.HasPrefix(trimmed, `"`) && strings.HasSuffix(trimmed, `"`)) ||
+		(strings.HasPrefix(trimmed, `'`) && strings.HasSuffix(trimmed, `'`)) {
+		// Extract the quoted content
+		quoteChar := string(trimmed[0])
+		inner := trimmed[1 : len(trimmed)-1]
+
+		// Check if the quoted path ends with .app
+		if strings.HasSuffix(inner, ".app") {
+			return fmt.Sprintf("open -a %s%s%s", quoteChar, inner, quoteChar)
+		}
+
+		return trimmed
+	}
+
+	// Handle unquoted commands - check first word
+	parts := strings.Fields(trimmed)
+	if len(parts) > 0 && strings.HasSuffix(parts[0], ".app") {
+		// If the .app path contains spaces, we need to quote it
+		appPath := parts[0]
+		if strings.Contains(appPath, " ") {
+			appPath = `"` + appPath + `"`
+		}
+
+		// Reconstruct with open -a and remaining arguments
+		if len(parts) > 1 {
+			return fmt.Sprintf("open -a %s %s", appPath, strings.Join(parts[1:], " "))
+		}
+		return fmt.Sprintf("open -a %s", appPath)
+	}
+
+	return trimmed
 }
 
 // checkExecutable verifies if a file is executable
@@ -212,28 +324,54 @@ func (h *macHandler) checkExecutable(path string) error {
 
 // validateCommand checks if the command can be executed (basic validation)
 func (h *macHandler) validateCommand(command string) error {
-	words := strings.Fields(command)
-	if len(words) == 0 {
+	if strings.TrimSpace(command) == "" {
 		return fmt.Errorf("empty command")
 	}
 
-	// Get the first word (the actual command)
-	cmdName := words[0]
+	// Simple validation - just check if the main command/path exists
+	// Since the command string is already properly parsed from shell args,
+	// we just need to extract the executable part
 
-	// If it's a relative or absolute path, check if it exists and is executable
-	if strings.Contains(cmdName, "/") {
-		if absPath, err := filepath.Abs(cmdName); err == nil {
-			if _, err := os.Stat(absPath); err != nil {
-				return fmt.Errorf("command '%s' not found", cmdName)
-			}
-			return h.checkExecutable(absPath)
-		}
+	var cmdPath string
+
+	// Remove outer quotes if present (they were added by ensureQuotedIfNeeded)
+	trimmed := strings.TrimSpace(command)
+	if (strings.HasPrefix(trimmed, `"`) && strings.HasSuffix(trimmed, `"`)) ||
+		(strings.HasPrefix(trimmed, `'`) && strings.HasSuffix(trimmed, `'`)) {
+		cmdPath = trimmed[1 : len(trimmed)-1]
 	} else {
-		// For commands in PATH, try to find them using 'which'
-		// This is a simple check - we don't want to be too strict
-		// Just verify it's not obviously wrong
-		if strings.ContainsAny(cmdName, "{}[]()<>|&;") {
-			return fmt.Errorf("command '%s' contains invalid characters", cmdName)
+		// For unquoted commands, take the first word
+		parts := strings.Fields(trimmed)
+		if len(parts) > 0 {
+			cmdPath = parts[0]
+		}
+	}
+
+	if cmdPath == "" {
+		return fmt.Errorf("could not determine command path")
+	}
+
+	// If it's a path, check if it exists
+	if strings.Contains(cmdPath, "/") {
+		if !filepath.IsAbs(cmdPath) {
+			if absPath, err := filepath.Abs(cmdPath); err == nil {
+				cmdPath = absPath
+			}
+		}
+
+		// Check if the path exists
+		if _, err := os.Stat(cmdPath); err != nil {
+			return fmt.Errorf("command '%s' not found", cmdPath)
+		}
+
+		// For .app bundles, we don't need to check executable permissions
+		if strings.HasSuffix(cmdPath, ".app") {
+			return nil
+		}
+
+		// If it's a regular file, check if it's executable
+		if fileInfo, err := os.Stat(cmdPath); err == nil && fileInfo.Mode().IsRegular() {
+			return h.checkExecutable(cmdPath)
 		}
 	}
 
